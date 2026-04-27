@@ -1,0 +1,186 @@
+@import "tailwindcss";
+
+@theme {
+  --color-wt-primary: #2563eb;
+  --color-wt-text: #111827;
+  --color-wt-bg: #ffffff;
+  --color-wt-muted: #6b7280;
+}
+
+@layer base {
+  html,
+  body {
+    @apply m-0 bg-white text-slate-900 antialiased;
+  }
+
+  body {
+    font-family: var(--wt-font-body, Inter, Arial, sans-serif);
+    background: var(--wt-color-bg, #ffffff);
+    color: var(--wt-color-text, #111827);
+  }
+
+  a {
+    color: inherit;
+  }
+}
+
+@layer components {
+  .wt-ui-card {
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 1.5rem;
+    background: var(--builder-color-surface, #ffffff);
+    color: var(--builder-color-text, var(--wt-color-text, #111827));
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .wt-ui-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--builder-color-primary, var(--wt-color-primary, #2563eb));
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .wt-ui-heading {
+    font-family: var(--builder-font-heading, var(--wt-font-heading, Inter, Arial, sans-serif));
+    color: var(--builder-color-text, var(--wt-color-text, #111827));
+  }
+
+  .wt-ui-muted {
+    color: var(--wt-color-muted, #6b7280);
+  }
+
+  .wt-ui-link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .wt-ui-field-label {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    color: var(--wt-color-muted, #6b7280);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .wt-ui-field-shell {
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 1rem;
+    background: var(--builder-color-surface, #ffffff);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .wt-ui-field-shell:focus-within {
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  }
+
+  .wt-ui-field-meta {
+    font-size: 0.75rem;
+    color: var(--wt-color-muted, #6b7280);
+  }
+
+  .wt-ui-input {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.95rem 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 1rem;
+    background: var(--builder-color-card, #ffffff);
+    color: var(--builder-color-text, var(--wt-color-text, #111827));
+    font: inherit;
+    box-sizing: border-box;
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .wt-ui-input::placeholder {
+    color: #94a3b8;
+  }
+
+  .wt-ui-input:focus-visible {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  }
+
+  .wt-ui-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0.875rem 1.25rem;
+    border: 0;
+    border-radius: 1rem;
+    background: var(--builder-button-background, var(--wt-color-primary, #2563eb));
+    color: var(--builder-button-text, #ffffff);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      opacity 150ms ease,
+      transform 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .wt-ui-button:hover {
+    opacity: 0.96;
+  }
+
+  .wt-ui-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+  }
+
+  .wt-ui-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .wt-ui-menu-button {
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 999px;
+    background: var(--builder-color-background, rgba(255, 255, 255, 0.96));
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  }
+
+  .wt-ui-sheet {
+    background: var(--builder-color-background, #ffffff);
+    color: var(--builder-color-text, #0f172a);
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.18);
+  }
+
+  .wt-ui-sheet--overlay {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.82) 0%, rgba(15, 23, 42, 0.92) 100%);
+    color: #ffffff;
+  }
+
+  .wt-ui-divider-link {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+  }
+
+  .wt-ui-divider-link--inverse {
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+  }
+}
