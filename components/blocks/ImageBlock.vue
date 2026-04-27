@@ -31,5 +31,5 @@ const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
 
 <style scoped>
 .wt-image-block { max-width: 100%; }
-.wt-image { width: 100%; height: 100%; display: block; object-fit: contain; }
+.wt-image { width: 100%; height: 100%; display: block; object-fit: cover; }
 </style>

@@ -1,9 +1,38 @@
 <script setup lang="ts">
+import type { CSSProperties } from 'vue'
 import SchemaRenderer from '~/components/renderer/SchemaRenderer.vue'
-import { runtimeHeaderOverlayKey, runtimeHeaderSchemaKey, runtimeMenusKey } from '~/lib/blockRuntime'
+import { getNodeStyles, runtimeHeaderOverlayKey, runtimeHeaderSchemaKey, runtimeMenusKey } from '~/lib/blockRuntime'
 import { buildResponsiveStylesheet } from '~/lib/responsiveRuntime'
+import { normalizeSchemaNodes } from '~/lib/schema'
 import { buildCssVars } from '~/lib/styles'
 import { mergeVaryHeader } from '~/lib/host'
+
+const BACKGROUND_STYLE_KEYS = [
+  'background',
+  'backgroundColor',
+  'backgroundImage',
+  'backgroundSize',
+  'backgroundPosition',
+  'backgroundRepeat',
+  'backgroundAttachment',
+  'backgroundClip',
+  'backgroundOrigin',
+] as const
+
+function pickRootBackgroundStyles(schema: unknown): CSSProperties | undefined {
+  const [root] = normalizeSchemaNodes(schema as any)
+  if (!root) return undefined
+
+  const styles = getNodeStyles(root)
+  const picked: Record<string, string | number> = {}
+  for (const key of BACKGROUND_STYLE_KEYS) {
+    const value = styles[key]
+    if (value !== undefined && value !== '') {
+      picked[key] = value
+    }
+  }
+  return Object.keys(picked).length ? (picked as CSSProperties) : undefined
+}
 
 const payload = await usePublicPage()
 usePublicSeo(payload)
@@ -57,6 +86,8 @@ const runtimeHeaderPosition = computed(() => {
 
   return 'static'
 })
+const headerWrapperStyle = computed(() => pickRootBackgroundStyles(payload.value?.site?.headerSchema))
+const footerWrapperStyle = computed(() => pickRootBackgroundStyles(payload.value?.site?.footerSchema))
 const responsiveCss = computed(() =>
   buildResponsiveStylesheet({
     headerSchema: payload.value?.site?.headerSchema,
@@ -98,13 +129,14 @@ if (import.meta.server) {
         'wt-page-header--sticky': runtimeHeaderPosition === 'sticky' && !runtimeHeaderOverlay,
         'wt-page-header--overlay': runtimeHeaderOverlay,
       }"
+      :style="headerWrapperStyle"
     >
       <SchemaRenderer :schema="payload?.site?.headerSchema" scope="header" />
     </header>
     <main class="wt-main">
       <SchemaRenderer :schema="payload?.page?.bodySchema" scope="body" />
     </main>
-    <footer v-if="payload?.site?.footerSchema" class="wt-page-footer">
+    <footer v-if="payload?.site?.footerSchema" class="wt-page-footer" :style="footerWrapperStyle">
       <SchemaRenderer :schema="payload?.site?.footerSchema" scope="footer" />
     </footer>
   </div>
