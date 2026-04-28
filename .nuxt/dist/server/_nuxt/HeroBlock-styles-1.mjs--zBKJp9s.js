@@ -1,0 +1,5 @@
+const HeroBlock_vue_vue_type_style_index_0_scoped_8bd59fe5_lang = ".wt-hero[data-v-8bd59fe5]{padding:0}.wt-eyebrow[data-v-8bd59fe5]{padding:.25rem .75rem}.wt-description[data-v-8bd59fe5],.wt-title[data-v-8bd59fe5]{margin:1rem 0 0}.wt-hero-image[data-v-8bd59fe5]{display:block;height:auto;margin-top:1rem;max-width:100%}";
+export {
+  HeroBlock_vue_vue_type_style_index_0_scoped_8bd59fe5_lang as default
+};
+//# sourceMappingURL=HeroBlock-styles-1.mjs--zBKJp9s.js.map

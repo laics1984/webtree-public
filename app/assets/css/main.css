@@ -103,7 +103,7 @@
     padding: 0.95rem 1rem;
     border: 1px solid rgba(148, 163, 184, 0.28);
     border-radius: 1rem;
-    background: var(--builder-color-card, #ffffff);
+    background: var(--builder-color-background, var(--wt-color-bg, #ffffff));
     color: var(--builder-color-text, var(--wt-color-text, #111827));
     font: inherit;
     box-sizing: border-box;

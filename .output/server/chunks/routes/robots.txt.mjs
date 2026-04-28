@@ -1,4 +1,4 @@
-import { d as defineEventHandler, u as useRuntimeConfig, g as getHeader, s as setHeader, c as createError } from '../nitro/nitro.mjs';
+globalThis.__timing__.logStart('Load chunks/routes//robots.txt');import { d as defineEventHandler, u as useRuntimeConfig, a as getHeader, s as setHeader, c as createError } from '../nitro/nitro.mjs';
 import { n as normalizeHost, m as mergeVaryHeader, f as fetchPublicSite, b as buildRobotsTxt, g as getPublicFeedStatusCode } from '../_/publicFeed.mjs';
 import 'node:http';
 import 'node:https';
@@ -29,5 +29,5 @@ const robots_txt = defineEventHandler(async (event) => {
   }
 });
 
-export { robots_txt as default };
+export { robots_txt as default };;globalThis.__timing__.logEnd('Load chunks/routes//robots.txt');
 //# sourceMappingURL=robots.txt.mjs.map

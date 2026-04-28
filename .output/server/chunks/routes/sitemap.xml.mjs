@@ -1,4 +1,4 @@
-import { d as defineEventHandler, u as useRuntimeConfig, g as getHeader, s as setHeader, c as createError } from '../nitro/nitro.mjs';
+globalThis.__timing__.logStart('Load chunks/routes//sitemap.xml');import { d as defineEventHandler, u as useRuntimeConfig, a as getHeader, s as setHeader, c as createError } from '../nitro/nitro.mjs';
 import { n as normalizeHost, m as mergeVaryHeader, a as fetchPublicRoutes, c as buildSitemapXml, g as getPublicFeedStatusCode } from '../_/publicFeed.mjs';
 import 'node:http';
 import 'node:https';
@@ -29,5 +29,5 @@ const sitemap_xml = defineEventHandler(async (event) => {
   }
 });
 
-export { sitemap_xml as default };
+export { sitemap_xml as default };;globalThis.__timing__.logEnd('Load chunks/routes//sitemap.xml');
 //# sourceMappingURL=sitemap.xml.mjs.map
