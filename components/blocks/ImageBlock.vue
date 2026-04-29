@@ -2,13 +2,30 @@
 import { getBooleanField, getNodeClasses, getNodeStyles, getStringField } from '~/lib/blockRuntime'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
 
+const TAILWIND_HEIGHT_PX: Record<string, string> = {
+  'h-auto': 'auto',
+  'h-full': '100%',
+  'h-40': '160px',
+  'h-64': '256px',
+  'h-96': '384px',
+}
+
 const props = defineProps<{ node: Record<string, any> }>()
 const src = computed(() => getStringField(props.node, 'src', 'imageUrl'))
 const alt = computed(() => getStringField(props.node, 'alt', 'title') || '')
 const isHero = computed(() => getBooleanField(props.node, 'priority') || getStringField(props.node, 'fetchpriority') === 'high')
 const nodeClasses = computed(() => getNodeClasses(props.node))
-const nodeStyles = computed(() => getNodeStyles(props.node))
 const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
+
+const nodeStyles = computed(() => {
+  const styles = getNodeStyles(props.node)
+  if (styles.height) return styles
+  const classes = getNodeClasses(props.node).split(/\s+/)
+  for (const [cls, val] of Object.entries(TAILWIND_HEIGHT_PX)) {
+    if (classes.includes(cls)) return { ...styles, height: val }
+  }
+  return styles
+})
 </script>
 
 <template>

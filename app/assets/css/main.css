@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source inline("h-auto h-full h-40 h-64 h-96 w-auto w-full w-1/2 w-1/3 w-2/3");
 
 @theme {
   --color-wt-primary: #2563eb;

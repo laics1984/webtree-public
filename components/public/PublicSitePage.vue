@@ -159,7 +159,7 @@ body {
   min-height: 100vh;
   font-family: var(--wt-font-body, Inter, Arial, sans-serif);
   color: var(--wt-color-text, #111827);
-  background: var(--wt-color-bg, #ffffff);
+  background: var(--builder-page-background, var(--wt-color-bg, #ffffff));
 }
 
 .wt-site[data-page-width-mode='contained'] {

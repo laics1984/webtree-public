@@ -117,9 +117,8 @@ const fields = computed<RuntimeFieldDefinition[]>(() => {
     :style="nodeStyles"
     :data-wt-node-id="nodeDomId"
   >
+    <div class="wt-contact-form__glow" aria-hidden="true" />
     <div class="wt-contact-form__shells">
-      <div class="wt-contact-form__glow" aria-hidden="true" />
-
       <form class="wt-contact-form__panel" @submit.prevent>
         <label
           v-for="field in fields"
@@ -231,21 +230,17 @@ const fields = computed<RuntimeFieldDefinition[]>(() => {
 </template>
 
 <style scoped>
-.wt-contact-form__shell {
-  color: var(--builder-color-text, #111827);
-  font-family: var(--builder-font-body, system-ui, sans-serif);
+.wt-contact-form {
   position: relative;
   overflow: hidden;
-  border-radius: 26px;
-  border: 1px solid color-mix(in srgb, var(--builder-color-primary, #2563eb) 18%, transparent);
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--builder-color-background, #ffffff) 88%, white) 0%,
-    color-mix(in srgb, var(--builder-color-surface, #f8fafc) 78%, var(--builder-color-primary, #2563eb)) 100%
-  );
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
     0 24px 60px color-mix(in srgb, var(--builder-color-primary, #2563eb) 14%, transparent);
+}
+
+.wt-contact-form__shells {
+  position: relative;
+  z-index: 1;
 }
 
 .wt-contact-form__glow {
@@ -263,19 +258,13 @@ const fields = computed<RuntimeFieldDefinition[]>(() => {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
-  padding: 1.25rem;
+  padding: 0.75rem;
 }
 
 @media (min-width: 640px) {
   .wt-contact-form__panel {
     gap: 1.5rem;
-    padding: 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .wt-contact-form__panel {
-    padding: 2rem;
+    padding: 1rem;
   }
 }
 

@@ -93,6 +93,7 @@ export const hasBackgroundImage = (styles?: Record<string, unknown> | null) => {
 }
 
 const PHOTO_STYLE_KEYS = [
+  'background',
   'backgroundImage',
   'backgroundSize',
   'backgroundPosition',

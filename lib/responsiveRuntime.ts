@@ -125,21 +125,6 @@ function getNodeName(node: PublicBlockNode | Record<string, unknown> | null | un
   return getStringField(node, 'name') || ''
 }
 
-function withExplicitPadding(
-  paddingTop: string,
-  paddingRight: string,
-  paddingBottom: string,
-  paddingLeft: string
-): RuntimeStyleMap {
-  return {
-    padding: `${paddingTop} ${paddingRight} ${paddingBottom} ${paddingLeft}`,
-    paddingTop,
-    paddingRight,
-    paddingBottom,
-    paddingLeft,
-  }
-}
-
 function getGeneratedLayoutStyleOverrides(
   node: PublicBlockNode | Record<string, unknown> | null | undefined,
   device: 'Desktop' | DeviceType
@@ -152,14 +137,8 @@ function getGeneratedLayoutStyleOverrides(
 
   if (GENERATED_SECTION_SHELL_NAMES.has(nodeName)) {
     return device === 'Desktop'
-      ? {
-          ...withExplicitPadding('160px', '96px', '160px', '96px'),
-          gap: '72px',
-        }
-      : {
-          ...withExplicitPadding('72px', '32px', '72px', '32px'),
-          gap: '28px',
-        }
+      ? { gap: '72px' }
+      : { gap: '28px' }
   }
 
   if (nodeName === 'Section Intro') {
@@ -186,33 +165,17 @@ function getGeneratedLayoutStyleOverrides(
       : { gap: '16px' }
   }
 
-  if (nodeName === 'CTA Banner') {
-    return device === 'Desktop'
-      ? withExplicitPadding('56px', '48px', '56px', '48px')
-      : withExplicitPadding('36px', '28px', '36px', '28px')
-  }
-
   if (nodeName === 'About Highlight') {
     return device === 'Desktop'
-      ? {
-          ...withExplicitPadding('48px', '44px', '48px', '44px'),
-          minHeight: '220px',
-        }
-      : {
-          ...withExplicitPadding('24px', '24px', '24px', '24px'),
-          minHeight: '180px',
-        }
+      ? { minHeight: '220px' }
+      : { minHeight: '180px' }
   }
 
   const generatedCardMinHeight = GENERATED_CARD_MIN_HEIGHTS[nodeName]
   if (generatedCardMinHeight) {
     return device === 'Desktop'
-      ? {
-          ...withExplicitPadding('48px', '44px', '48px', '44px'),
-          minHeight: generatedCardMinHeight,
-        }
+      ? { minHeight: generatedCardMinHeight }
       : {
-          ...withExplicitPadding('24px', '24px', '24px', '24px'),
           minHeight:
             nodeName === 'Feature Card'
               ? '200px'
@@ -454,16 +417,6 @@ export function getResponsiveNodeStyles(
   }
 
   if (
-    device === 'Mobile' &&
-    typeof mergedStyles.padding === 'string'
-  ) {
-    const padding = Number.parseInt(mergedStyles.padding, 10)
-    if (Number.isFinite(padding) && padding > 20) {
-      mergedStyles.padding = `${Math.max(10, padding * 0.75)}px`
-    }
-  }
-
-  if (
     device === 'Tablet' &&
     typeof mergedStyles.fontSize === 'string'
   ) {
@@ -574,15 +527,6 @@ export function getResponsiveNodeStyles(
     if (!hasDeviceOverride('flexDirection')) mergedStyles.flexDirection = 'column'
     if (!hasDeviceOverride('alignItems')) mergedStyles.alignItems = 'flex-start'
     if (!hasDeviceOverride('gap')) mergedStyles.gap = '12px'
-  }
-
-  if (device === 'Mobile' && isFooterRoot) {
-    if (!hasDeviceOverride('padding') && typeof mergedStyles.padding === 'string') {
-      const padding = Number.parseInt(mergedStyles.padding, 10)
-      if (Number.isFinite(padding) && padding > 24) {
-        mergedStyles.padding = `${Math.max(16, padding * 0.75)}px`
-      }
-    }
   }
 
   if (
