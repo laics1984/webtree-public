@@ -1,4 +1,12 @@
-import type { PublicPageResponse, PublicRoutesResponse, PublicSiteResponse } from '~/types/public'
+import type {
+  PublicContentItemResponse,
+  PublicContentItemType,
+  PublicContentListResponse,
+  PublicPageResponse,
+  PublicRoutesResponse,
+  PublicSiteResponse,
+  PublicTemplateResponse,
+} from '~/types/public'
 
 function resolveApiBase(apiBase?: string | null): string {
   if (apiBase) {
@@ -31,5 +39,46 @@ export async function fetchPublicRoutes(host: string, apiBase?: string | null) {
   const base = resolveApiBase(apiBase)
   return await $fetch<PublicRoutesResponse>(`${base}/routes`, {
     params: { host }
+  })
+}
+
+export async function fetchPublicTemplate(
+  host: string,
+  type: PublicContentItemType,
+  apiBase?: string | null
+) {
+  const base = resolveApiBase(apiBase)
+  return await $fetch<PublicTemplateResponse>(`${base}/template`, {
+    params: { host, type },
+  })
+}
+
+export async function fetchPublicContentItem(
+  host: string,
+  type: PublicContentItemType,
+  slug: string,
+  apiBase?: string | null
+) {
+  const base = resolveApiBase(apiBase)
+  return await $fetch<PublicContentItemResponse>(`${base}/content`, {
+    params: { host, type, slug },
+  })
+}
+
+export async function fetchPublicContentList(
+  host: string,
+  type: PublicContentItemType,
+  params: { count: number; categorySlug?: string | null; current?: number },
+  apiBase?: string | null
+) {
+  const base = resolveApiBase(apiBase)
+  return await $fetch<PublicContentListResponse>(`${base}/content-list`, {
+    params: {
+      host,
+      type,
+      count: params.count,
+      current: params.current ?? 1,
+      categorySlug: params.categorySlug ?? undefined,
+    },
   })
 }

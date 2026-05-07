@@ -1,4 +1,4 @@
-globalThis.__timing__.logStart('Load chunks/routes/api/public/site.get');import { d as defineEventHandler, g as getQuery, u as useRuntimeConfig } from '../../../nitro/nitro.mjs';
+import { d as defineEventHandler, g as getQuery, u as useRuntimeConfig } from '../../../nitro/nitro.mjs';
 import 'node:http';
 import 'node:https';
 import 'node:events';
@@ -16,5 +16,5 @@ const site_get = defineEventHandler(async (event) => {
   });
 });
 
-export { site_get as default };;globalThis.__timing__.logEnd('Load chunks/routes/api/public/site.get');
+export { site_get as default };
 //# sourceMappingURL=site.get.mjs.map

@@ -1,4 +1,4 @@
-globalThis.__timing__.logStart('Load chunks/_/publicFeed');import { u as useRuntimeConfig } from '../nitro/nitro.mjs';
+import { u as useRuntimeConfig } from '../nitro/nitro.mjs';
 
 function resolveApiBase(apiBase) {
   const config = useRuntimeConfig();
@@ -253,5 +253,5 @@ function getPublicFeedStatusCode(error) {
   return 500;
 }
 
-export { fetchPublicRoutes as a, buildRobotsTxt as b, buildSitemapXml as c, fetchPublicSite as f, getPublicFeedStatusCode as g, mergeVaryHeader as m, normalizeHost as n };;globalThis.__timing__.logEnd('Load chunks/_/publicFeed');
+export { fetchPublicRoutes as a, buildRobotsTxt as b, buildSitemapXml as c, fetchPublicSite as f, getPublicFeedStatusCode as g, mergeVaryHeader as m, normalizeHost as n };
 //# sourceMappingURL=publicFeed.mjs.map

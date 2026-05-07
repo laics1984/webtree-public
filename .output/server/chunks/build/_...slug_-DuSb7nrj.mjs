@@ -1,4 +1,4 @@
-globalThis.__timing__.logStart('Load chunks/build/_...slug_-DuSb7nrj');import { useSSRContext } from 'vue';
+import { useSSRContext } from 'vue';
 import { _ as _export_sfc } from './server.mjs';
 import '../nitro/nitro.mjs';
 import 'node:http';
@@ -32,5 +32,5 @@ _sfc_main.setup = (props, ctx) => {
 };
 const ____slug_ = /* @__PURE__ */ _export_sfc(_sfc_main, [["ssrRender", _sfc_ssrRender]]);
 
-export { ____slug_ as default };;globalThis.__timing__.logEnd('Load chunks/build/_...slug_-DuSb7nrj');
+export { ____slug_ as default };
 //# sourceMappingURL=_...slug_-DuSb7nrj.mjs.map

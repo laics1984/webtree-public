@@ -2601,18 +2601,24 @@ async function getIslandContext(event) {
 	};
 }
 
+const _lazy_Kqu1K6 = () => Promise.resolve().then(function () { return contentList_get$1; });
+const _lazy_0PMjwA = () => Promise.resolve().then(function () { return content_get$1; });
 const _lazy_8uzUu3 = () => Promise.resolve().then(function () { return page_get$1; });
 const _lazy_evhFjv = () => Promise.resolve().then(function () { return routes_get$1; });
 const _lazy_yjW5pH = () => Promise.resolve().then(function () { return site_get$1; });
+const _lazy_jh9D0L = () => Promise.resolve().then(function () { return template_get$1; });
 const _lazy_irqbBt = () => Promise.resolve().then(function () { return robots_txt$1; });
 const _lazy_2Sb6S6 = () => Promise.resolve().then(function () { return sitemap_xml$1; });
 const _lazy_lLqjnj = () => Promise.resolve().then(function () { return renderer; });
 
 const handlers = [
   { route: '', handler: _vsjg7A, lazy: false, middleware: true, method: undefined },
+  { route: '/api/public/content-list', handler: _lazy_Kqu1K6, lazy: true, middleware: false, method: "get" },
+  { route: '/api/public/content', handler: _lazy_0PMjwA, lazy: true, middleware: false, method: "get" },
   { route: '/api/public/page', handler: _lazy_8uzUu3, lazy: true, middleware: false, method: "get" },
   { route: '/api/public/routes', handler: _lazy_evhFjv, lazy: true, middleware: false, method: "get" },
   { route: '/api/public/site', handler: _lazy_yjW5pH, lazy: true, middleware: false, method: "get" },
+  { route: '/api/public/template', handler: _lazy_jh9D0L, lazy: true, middleware: false, method: "get" },
   { route: '/robots.txt', handler: _lazy_irqbBt, lazy: true, middleware: false, method: undefined },
   { route: '/sitemap.xml', handler: _lazy_2Sb6S6, lazy: true, middleware: false, method: undefined },
   { route: '/__nuxt_error', handler: _lazy_lLqjnj, lazy: true, middleware: false, method: undefined },
@@ -2957,6 +2963,32 @@ const styles$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   default: styles
 }, Symbol.toStringTag, { value: 'Module' }));
 
+const contentList_get = defineEventHandler(async (event) => {
+  const { host, type, count, current, categorySlug } = getQuery$1(event);
+  const config = useRuntimeConfig();
+  return await $fetch(`${config.publicApiBase}/api/public/content-list`, {
+    params: { host, type, count, current, categorySlug }
+  });
+});
+
+const contentList_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: contentList_get
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const content_get = defineEventHandler(async (event) => {
+  const { host, type, slug } = getQuery$1(event);
+  const config = useRuntimeConfig();
+  return await $fetch(`${config.publicApiBase}/api/public/content`, {
+    params: { host, type, slug }
+  });
+});
+
+const content_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: content_get
+}, Symbol.toStringTag, { value: 'Module' }));
+
 const page_get = defineEventHandler(async (event) => {
   const { host, path } = getQuery$1(event);
   const config = useRuntimeConfig();
@@ -2994,6 +3026,19 @@ const site_get = defineEventHandler(async (event) => {
 const site_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,
   default: site_get
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const template_get = defineEventHandler(async (event) => {
+  const { host, type } = getQuery$1(event);
+  const config = useRuntimeConfig();
+  return await $fetch(`${config.publicApiBase}/api/public/template`, {
+    params: { host, type }
+  });
+});
+
+const template_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: template_get
 }, Symbol.toStringTag, { value: 'Module' }));
 
 function resolveApiBase(apiBase) {

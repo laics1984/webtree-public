@@ -131,3 +131,87 @@ export interface PublicRoutesResponse {
     noindex?: boolean
   }>
 }
+
+export type PublicContentItemType = 'article' | 'event'
+
+export interface PublicTemplatePayload {
+  pageId: string
+  revisionId?: string
+  revisionNo?: number
+  templateFor: PublicContentItemType
+  updatedAt?: string
+  bodySchema?: PublicSchemaTree | PublicBlockNode[] | null
+}
+
+export interface PublicTemplateResponse extends PublicSiteResponse {
+  template: PublicTemplatePayload
+}
+
+export interface PublicContentItemAuthor {
+  id: string | number
+  name: string | null
+}
+
+export interface PublicContentItemCategory {
+  slug: string
+  title: string
+}
+
+export interface PublicContentItemTag {
+  id: string | number
+  name: string
+  slug: string
+}
+
+export interface PublicContentItem {
+  id: string
+  type: PublicContentItemType
+  title: string
+  slug?: string | null
+  excerpt?: string | null
+  body?: string | null
+  image?: string | null
+  gallery?: Array<string | null>
+  publish?: string | null
+  start?: string | null
+  end?: string | null
+  location?: string | null
+  author?: PublicContentItemAuthor | null
+  categories?: PublicContentItemCategory[]
+  tags?: PublicContentItemTag[]
+}
+
+export interface PublicContentItemResponse {
+  entity: { id: string; siteKey?: string | null }
+  item: PublicContentItem
+}
+
+export type CmsContentSource = 'articles' | 'events'
+export type CmsListLayout = 'grid' | 'list' | 'featured'
+export type CmsListSelectionMode = 'auto' | 'manual'
+
+export interface CmsListContent {
+  source: CmsContentSource
+  heading: string
+  showHeading: boolean
+  description: string
+  showDescription: boolean
+  layout: CmsListLayout
+  itemCount: number
+  categorySlug: string | null
+  selectionMode: CmsListSelectionMode
+  manualIds: string[]
+  showImage: boolean
+  showExcerpt: boolean
+  showMeta: boolean
+  showAuthor: boolean
+  showCategory: boolean
+}
+
+export interface PublicContentListResponse {
+  entity: { id: string; siteKey?: string | null }
+  items: PublicContentItem[]
+  total?: number
+  currentPage?: number
+  lastPage?: number
+}

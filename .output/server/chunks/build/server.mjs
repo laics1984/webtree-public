@@ -1,5 +1,5 @@
-import process from 'node:process';globalThis._importMeta_=globalThis._importMeta_||{url:"file:///_entry.js",env:process.env};globalThis.__timing__.logStart('Load chunks/build/server');import { hasInjectionContext, inject, getCurrentInstance, defineComponent, shallowRef, h, resolveComponent, computed, unref, defineAsyncComponent, provide, shallowReactive, ref, Suspense, Fragment, useSSRContext, createApp, mergeProps, withCtx, createTextVNode, onErrorCaptured, onServerPrefetch, createVNode, resolveDynamicComponent, reactive, effectScope, getCurrentScope, toRef, nextTick, isReadonly, isRef, isShallow, isReactive, toRaw } from 'vue';
-import { c as createError$1, p as parseQuery, l as getContext, m as hasProtocol, i as joinURL, n as parseURL, o as encodePath, q as decodePath, w as withQuery, r as isScriptProtocol, t as withTrailingSlash, v as withoutTrailingSlash, x as sanitizeStatusCode, $ as $fetch, y as defu, z as createHooks, A as executeAsync, B as createDebugger } from '../nitro/nitro.mjs';
+import process from 'node:process';globalThis._importMeta_=globalThis._importMeta_||{url:"file:///_entry.js",env:process.env};import { hasInjectionContext, getCurrentInstance, inject, defineComponent, shallowRef, h, resolveComponent, computed, unref, defineAsyncComponent, provide, shallowReactive, ref, Suspense, Fragment, useSSRContext, createApp, mergeProps, withCtx, createTextVNode, onErrorCaptured, onServerPrefetch, createVNode, resolveDynamicComponent, reactive, effectScope, getCurrentScope, toRef, nextTick, isReadonly, isRef, isShallow, isReactive, toRaw } from 'vue';
+import { c as createError$1, p as parseQuery, l as getContext, m as hasProtocol, i as joinURL, n as parseURL, o as encodePath, q as decodePath, w as withQuery, r as isScriptProtocol, t as withTrailingSlash, v as withoutTrailingSlash, x as sanitizeStatusCode, $ as $fetch, y as defu, z as createHooks, A as executeAsync } from '../nitro/nitro.mjs';
 import { b as baseURL } from '../routes/renderer.mjs';
 import { useRoute as useRoute$1, RouterView, createMemoryHistory, createRouter, START_LOCATION } from 'vue-router';
 import { library } from '@fortawesome/fontawesome-svg-core';
@@ -424,6 +424,8 @@ function getRouteRules(arg) {
     return {};
   }
 }
+const __nuxt_page_meta$1 = { layout: false };
+const __nuxt_page_meta = { layout: false };
 const _routes = [
   {
     name: "index",
@@ -434,6 +436,18 @@ const _routes = [
     name: "slug",
     path: "/:slug(.*)*",
     component: () => import('./_...slug_-DuSb7nrj.mjs')
+  },
+  {
+    name: "events-slug",
+    path: "/events/:slug()",
+    meta: __nuxt_page_meta$1 || {},
+    component: () => import('./_slug_-bbhiK9Ut.mjs')
+  },
+  {
+    name: "articles-slug",
+    path: "/articles/:slug()",
+    meta: __nuxt_page_meta || {},
+    component: () => import('./_slug_-ne17ixoz.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
@@ -777,13 +791,6 @@ const plugin = /* @__PURE__ */ defineNuxtPlugin({
     return { provide: { router } };
   }
 });
-const debug_hooks_hyXe6laRLyyi6S6XoqeItfe9HTFGNswlS09LT9GQbmQ = /* @__PURE__ */ defineNuxtPlugin({
-  name: "nuxt:debug:hooks",
-  enforce: "pre",
-  setup(nuxtApp) {
-    createDebugger(nuxtApp.hooks, { tag: "nuxt-app" });
-  }
-});
 function definePayloadReducer(name, reduce) {
   {
     useNuxtApp().ssrContext["~payloadReducers"][name] = reduce;
@@ -825,13 +832,12 @@ const fontawesome_Q3IsgyqLBh1UKEylzguvAAGnY_M0M67ZFjQjgD7J1rI = /* @__PURE__ */ 
 const plugins = [
   unhead_k2P3m_ZDyjlr2mMYnoDPwavjsDN8hBlk9cFai0bbopU,
   plugin,
-  debug_hooks_hyXe6laRLyyi6S6XoqeItfe9HTFGNswlS09LT9GQbmQ,
   revive_payload_server_MVtmlZaQpj6ApFmshWfUWl5PehCebzaBf2NuRMiIbms,
   components_plugin_z4hgvsiddfKkfXTP6M8M4zG5Cb7sGnDhcryKVM45Di4,
   fontawesome_Q3IsgyqLBh1UKEylzguvAAGnY_M0M67ZFjQjgD7J1rI
 ];
 const layouts = {
-  default: defineAsyncComponent(() => import('./default-yxUPDbdc.mjs').then((n) => n._).then((m) => m.default || m))
+  default: defineAsyncComponent(() => import('./default-BrnIQH3A.mjs').then((m) => m.default || m))
 };
 const routeRulesMatcher = _routeRulesMatcher;
 const LayoutLoader = defineComponent({
@@ -1486,5 +1492,5 @@ let entry;
 }
 const entry_default = ((ssrContext) => entry(ssrContext));
 
-export { _export_sfc as _, useRuntimeConfig as a, asyncDataDefaults as b, createError as c, useRoute as d, entry_default as default, __nuxt_component_0 as e, tryUseNuxtApp as t, useNuxtApp as u };;globalThis.__timing__.logEnd('Load chunks/build/server');
+export { _export_sfc as _, useRuntimeConfig as a, useNuxtApp as b, createError as c, asyncDataDefaults as d, entry_default as default, __nuxt_component_0 as e, tryUseNuxtApp as t, useRoute as u };
 //# sourceMappingURL=server.mjs.map

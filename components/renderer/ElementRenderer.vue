@@ -8,6 +8,10 @@ defineOptions({ name: 'ElementRenderer' })
 const props = defineProps<{ node: PublicBlockNode }>()
 const isDev = import.meta.dev
 
+const dynamicField = defineAsyncComponent(
+  () => import('~/components/blocks/DynamicFieldBlock.vue')
+)
+
 const registry: Record<string, any> = {
   header: defineAsyncComponent(() => import('~/components/blocks/ContainerBlock.vue')),
   body: defineAsyncComponent(() => import('~/components/blocks/ContainerBlock.vue')),
@@ -21,12 +25,27 @@ const registry: Record<string, any> = {
   link: defineAsyncComponent(() => import('~/components/blocks/LinkBlock.vue')),
   menu: defineAsyncComponent(() => import('~/components/blocks/MenuBlock.vue')),
   hero: defineAsyncComponent(() => import('~/components/blocks/HeroBlock.vue')),
-  contactform: defineAsyncComponent(() => import('~/components/blocks/ContactFormBlock.vue'))
+  contactform: defineAsyncComponent(() => import('~/components/blocks/ContactFormBlock.vue')),
+  articleslist: defineAsyncComponent(() => import('~/components/blocks/CmsListBlock.vue')),
+  eventslist: defineAsyncComponent(() => import('~/components/blocks/CmsListBlock.vue')),
+  articletitle: dynamicField,
+  articlebody: dynamicField,
+  articleimage: dynamicField,
+  articleexcerpt: dynamicField,
+  articledate: dynamicField,
+  articleauthor: dynamicField,
+  articlecategory: dynamicField,
+  eventtitle: dynamicField,
+  eventbody: dynamicField,
+  eventimage: dynamicField,
+  eventexcerpt: dynamicField,
+  eventdate: dynamicField,
+  eventlocation: dynamicField,
 }
 
 const component = computed(() => registry[normalizeBlockType(props.node?.type)])
 const fallbackChildren = computed(() => getNodeChildren(props.node))
-const shouldRenderFallback = computed(() => import.meta.dev || fallbackChildren.value.length > 0)
+const shouldRenderFallback = computed(() => fallbackChildren.value.length > 0)
 </script>
 
 <template>

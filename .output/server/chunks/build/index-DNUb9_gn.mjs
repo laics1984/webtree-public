@@ -1,4 +1,4 @@
-globalThis.__timing__.logStart('Load chunks/build/index-DNUb9_gn');import { useSSRContext } from 'vue';
+import { useSSRContext } from 'vue';
 import { _ as _export_sfc } from './server.mjs';
 import '../nitro/nitro.mjs';
 import 'node:http';
@@ -32,5 +32,5 @@ _sfc_main.setup = (props, ctx) => {
 };
 const index = /* @__PURE__ */ _export_sfc(_sfc_main, [["ssrRender", _sfc_ssrRender]]);
 
-export { index as default };;globalThis.__timing__.logEnd('Load chunks/build/index-DNUb9_gn');
+export { index as default };
 //# sourceMappingURL=index-DNUb9_gn.mjs.map
