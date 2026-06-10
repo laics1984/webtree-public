@@ -1,14 +1,7 @@
 <script setup lang="ts">
 import { getBooleanField, getNodeClasses, getNodeStyles, getStringField } from '~/lib/blockRuntime'
+import { getImageElementStyles, getImageWrapperStyles } from '~/lib/imageStyles'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
-
-const TAILWIND_HEIGHT_PX: Record<string, string> = {
-  'h-auto': 'auto',
-  'h-full': '100%',
-  'h-40': '160px',
-  'h-64': '256px',
-  'h-96': '384px',
-}
 
 const props = defineProps<{ node: Record<string, any> }>()
 const src = computed(() => getStringField(props.node, 'src', 'imageUrl'))
@@ -19,12 +12,13 @@ const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
 
 const nodeStyles = computed(() => {
   const styles = getNodeStyles(props.node)
-  if (styles.height) return styles
-  const classes = getNodeClasses(props.node).split(/\s+/)
-  for (const [cls, val] of Object.entries(TAILWIND_HEIGHT_PX)) {
-    if (classes.includes(cls)) return { ...styles, height: val }
-  }
-  return styles
+  return getImageWrapperStyles(styles, nodeClasses.value)
+})
+
+// Styling that must live on the <img> element itself.
+const imgStyle = computed(() => {
+  const styles = getNodeStyles(props.node)
+  return getImageElementStyles(styles)
 })
 </script>
 
@@ -40,6 +34,7 @@ const nodeStyles = computed(() => {
       class="wt-image"
       :src="src"
       :alt="alt"
+      :style="imgStyle"
       :loading="isHero ? 'eager' : 'lazy'"
       :fetchpriority="isHero ? 'high' : 'auto'"
     />
@@ -48,5 +43,5 @@ const nodeStyles = computed(() => {
 
 <style scoped>
 .wt-image-block { max-width: 100%; }
-.wt-image { width: 100%; height: 100%; display: block; object-fit: cover; }
+.wt-image { width: 100%; height: 100%; display: block; /* object-fit/object-position driven by :style binding */ }
 </style>

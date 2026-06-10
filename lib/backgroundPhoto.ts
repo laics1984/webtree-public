@@ -87,9 +87,34 @@ export const getBackgroundPhotoSettings = (
   }
 }
 
+/**
+ * Whether a `backgroundImage` value references a real photo — i.e. a `url(...)`
+ * pointing at a remote/local image file — as opposed to a pure CSS gradient
+ * (mesh/aurora backgrounds) or an inline data-URI (e.g. SVG grain/noise).
+ *
+ * Only real photos should go through the photo-layer pipeline (separate
+ * absolutely-positioned layer + opacity + dark overlay). Decorative gradients
+ * and textures must render in place, untouched.
+ *
+ * Note: a value may legitimately combine BOTH — the generator emits
+ * `linear-gradient(overlay), url('photo')` for brand-tinted hero photos. Such
+ * a value still counts as a photo because it contains a real (non-data) url().
+ */
+export const isPhotoSource = (value: string): boolean => {
+  const v = value.trim()
+  if (!v || v === 'none') return false
+  // Collect every url(...) reference. A bare gradient has none → not a photo.
+  const urls = v.match(/url\(\s*['"]?\s*[^'")]+/gi)
+  if (!urls) return false
+  // A real photo url() is neither a data: URI (inline grain/noise SVGs) nor an
+  // SVG fragment reference (#id / %23id — e.g. the `url(#n)` filter ref *inside*
+  // a grain data-URI). It's a photo only if some url() is a genuine source.
+  return urls.some((u) => !/url\(\s*['"]?\s*(data:|#|%23)/i.test(u))
+}
+
 export const hasBackgroundImage = (styles?: Record<string, unknown> | null) => {
   const value = styles?.backgroundImage
-  return typeof value === 'string' && value.trim() !== '' && value !== 'none'
+  return typeof value === 'string' && isPhotoSource(value)
 }
 
 const PHOTO_STYLE_KEYS = [

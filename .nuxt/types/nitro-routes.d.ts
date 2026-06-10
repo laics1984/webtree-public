@@ -12,6 +12,9 @@ declare module "nitropack/types" {
     '/api/public/page': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/public/page.get').default>>>>
     }
+    '/api/public/resolve': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/public/resolve.get').default>>>>
+    }
     '/api/public/routes': {
       'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/public/routes.get').default>>>>
     }

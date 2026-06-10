@@ -3,6 +3,8 @@ import { computed, inject } from 'vue'
 import type { PublicBlockNode, PublicContentItem } from '~/types/public'
 import { getNodeClasses, getNodeStyles } from '~/lib/blockRuntime'
 import { currentItemKey } from '~/lib/currentItem'
+import { currentListingKey } from '~/lib/currentListing'
+import { contentPrefixesKey } from '~/lib/contentPrefixes'
 import { formatDate, formatRange } from '~/lib/dateFormat'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
 import { renderCmsBodyToHtml } from '~/lib/cmsRichText'
@@ -18,6 +20,9 @@ const TAILWIND_HEIGHT_PX: Record<string, string> = {
 const props = defineProps<{ node: PublicBlockNode }>()
 
 const item = inject(currentItemKey, null) as PublicContentItem | null
+const currentListing = inject(currentListingKey, null)
+const contentPrefixes = inject(contentPrefixesKey, null)
+const articlePrefix = computed(() => contentPrefixes?.article || 'articles')
 
 const fieldType = computed(() => String(props.node?.type ?? '').toLowerCase())
 const nodeClasses = computed(() => getNodeClasses(props.node))
@@ -39,8 +44,28 @@ const renderedBody = computed(() => renderCmsBodyToHtml(item?.body))
 </script>
 
 <template>
+  <h1
+    v-if="fieldType === 'archivetitle' && currentListing?.taxonomy?.title"
+    class="wt-dynamic-title"
+    :class="nodeClasses"
+    :style="nodeStyles"
+    :data-wt-node-id="nodeDomId"
+  >
+    {{ currentListing.taxonomy.title }}
+  </h1>
+
+  <p
+    v-else-if="fieldType === 'archivedescription' && currentListing?.taxonomy?.description"
+    class="wt-dynamic-excerpt"
+    :class="nodeClasses"
+    :style="nodeStyles"
+    :data-wt-node-id="nodeDomId"
+  >
+    {{ currentListing.taxonomy.description }}
+  </p>
+
   <div
-    v-if="!item"
+    v-else-if="!item"
     class="wt-dynamic-empty"
     :class="nodeClasses"
     :style="nodeStyles"
@@ -136,10 +161,33 @@ const renderedBody = computed(() => renderCmsBodyToHtml(item?.body))
     :style="nodeStyles"
     :data-wt-node-id="nodeDomId"
   >
-    <span v-for="category in item.categories" :key="category.slug" class="wt-dynamic-category-pill">
+    <NuxtLink
+      v-for="category in item.categories"
+      :key="category.slug"
+      :to="`/${articlePrefix}/category/${category.slug}`"
+      class="wt-dynamic-category-pill"
+    >
       {{ category.title }}
-    </span>
+    </NuxtLink>
   </div>
+
+  <div
+    v-else-if="fieldType === 'articletag' && item.tags?.length"
+    class="wt-dynamic-tags"
+    :class="nodeClasses"
+    :style="nodeStyles"
+    :data-wt-node-id="nodeDomId"
+  >
+    <NuxtLink
+      v-for="tag in item.tags"
+      :key="tag.slug"
+      :to="`/${articlePrefix}/tag/${tag.slug}`"
+      class="wt-dynamic-tag-pill"
+    >
+      {{ tag.title || tag.name }}
+    </NuxtLink>
+  </div>
+
 </template>
 
 <style scoped>
@@ -237,6 +285,28 @@ const renderedBody = computed(() => renderCmsBodyToHtml(item?.body))
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  text-decoration: none;
+}
+
+.wt-dynamic-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.wt-dynamic-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  background: color-mix(in srgb, currentColor 6%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  opacity: 0.75;
 }
 
 .wt-dynamic-empty {

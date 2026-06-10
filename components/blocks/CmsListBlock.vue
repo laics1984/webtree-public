@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, resolveComponent } from 'vue'
+import { computed, inject, resolveComponent } from 'vue'
 import type {
   CmsContentSource,
   CmsListContent,
+  CmsListFilter,
+  CmsListHeadingMode,
+  CmsListPagination,
   PublicBlockNode,
   PublicContentItem,
   PublicContentItemType,
@@ -10,9 +13,12 @@ import type {
 } from '~/types/public'
 import { fetchPublicContentList } from '~/lib/api'
 import { getNodeClasses, getNodeContent, getNodeStyles } from '~/lib/blockRuntime'
+import { resolveContentItemHref } from '~/lib/contentLink'
+import { contentPrefixesKey } from '~/lib/contentPrefixes'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
 import { getRequestHost } from '~/lib/host'
 import { formatDate, formatRange } from '~/lib/dateFormat'
+import { currentListingKey } from '~/lib/currentListing'
 
 defineOptions({ name: 'CmsListBlock' })
 
@@ -23,15 +29,28 @@ const DEFAULT_HEADING: Record<CmsContentSource, string> = {
   events: 'Upcoming Events',
 }
 
+const VALID_HEADING_MODES: CmsListHeadingMode[] = ['static', 'archive-title', 'hide-on-archive']
+
 function createDefaultCmsListContent(source: CmsContentSource): CmsListContent {
   return {
     source,
     heading: DEFAULT_HEADING[source],
+    headingMode: 'static',
     showHeading: true,
     description: '',
     showDescription: false,
     layout: 'grid',
     itemCount: 6,
+    pagination: {
+      enabled: true,
+      style: 'numbered',
+      showSummary: true,
+    },
+    filter: {
+      mode: 'all',
+      taxonomyType: null,
+      taxonomySlug: null,
+    },
     categorySlug: null,
     selectionMode: 'auto',
     manualIds: [],
@@ -53,6 +72,58 @@ function isCmsListContent(value: unknown): value is CmsListContent {
   )
 }
 
+function isCmsListFilter(value: unknown): value is CmsListFilter {
+  if (!value || typeof value !== 'object') return false
+  const v = value as Partial<CmsListFilter>
+  return (
+    (v.mode === 'all' ||
+      v.mode === 'currentListing' ||
+      v.mode === 'specificTaxonomy') &&
+    (v.taxonomyType === 'category' || v.taxonomyType === 'tag' || v.taxonomyType === null) &&
+    (typeof v.taxonomySlug === 'string' || v.taxonomySlug === null)
+  )
+}
+
+function normalizeCmsListPagination(value: unknown): CmsListPagination {
+  const defaults = createDefaultCmsListContent('articles').pagination!
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return defaults
+  }
+
+  const raw = value as Partial<CmsListPagination>
+  return {
+    enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
+    style: raw.style === 'numbered' ? raw.style : defaults.style,
+    showSummary:
+      typeof raw.showSummary === 'boolean'
+        ? raw.showSummary
+        : defaults.showSummary,
+  }
+}
+
+function normalizeCmsListContent(raw: CmsListContent): CmsListContent {
+  const next = { ...createDefaultCmsListContent(raw.source), ...raw }
+
+  if (!next.headingMode || !VALID_HEADING_MODES.includes(next.headingMode)) {
+    next.headingMode = 'static'
+  }
+  next.pagination = normalizeCmsListPagination(raw.pagination)
+
+  if (isCmsListFilter(raw.filter)) {
+    next.filter = raw.filter
+  } else if (typeof raw.categorySlug === 'string' && raw.categorySlug.trim()) {
+    next.filter = {
+      mode: 'specificTaxonomy',
+      taxonomyType: 'category',
+      taxonomySlug: raw.categorySlug.trim(),
+    }
+  } else {
+    next.filter = createDefaultCmsListContent(raw.source).filter
+  }
+
+  return next
+}
+
 const fallbackSource = computed<CmsContentSource>(() =>
   String(props.node?.type ?? '').toLowerCase() === 'eventslist' ? 'events' : 'articles'
 )
@@ -60,7 +131,7 @@ const fallbackSource = computed<CmsContentSource>(() =>
 const content = computed<CmsListContent>(() => {
   const raw = getNodeContent(props.node)
   if (isCmsListContent(raw)) {
-    return { ...createDefaultCmsListContent(raw.source), ...raw }
+    return normalizeCmsListContent(raw)
   }
   return createDefaultCmsListContent(fallbackSource.value)
 })
@@ -68,6 +139,23 @@ const content = computed<CmsListContent>(() => {
 const source = computed<CmsContentSource>(() => content.value.source)
 const apiType = computed<PublicContentItemType>(() =>
   source.value === 'events' ? 'event' : 'article'
+)
+const route = useRoute()
+const pagination = computed<CmsListPagination>(() =>
+  content.value.pagination ?? createDefaultCmsListContent(source.value).pagination!
+)
+const paginationEnabled = computed(
+  () => content.value.selectionMode !== 'manual' && pagination.value.enabled
+)
+
+function parsePage(value: unknown): number {
+  const raw = Array.isArray(value) ? value[0] : value
+  const parsed = Number.parseInt(String(raw ?? ''), 10)
+  return Number.isFinite(parsed) && parsed > 1 ? parsed : 1
+}
+
+const currentPage = computed(() =>
+  paginationEnabled.value ? parsePage(route.query.page) : 1
 )
 
 const fetchCount = computed(() =>
@@ -77,17 +165,51 @@ const fetchCount = computed(() =>
 )
 
 const host = getRequestHost()
+const currentListing = inject(currentListingKey, null)
+const contentPrefixes = inject(contentPrefixesKey, null)
 
-const cacheKey = `cms-list:${host}:${apiType.value}:${fetchCount.value}:${content.value.categorySlug ?? ''}`
+const resolvedTaxonomy = computed(() => {
+  if (apiType.value !== 'article') return null
+
+  const filter = content.value.filter ?? createDefaultCmsListContent(source.value).filter
+  if (filter.mode === 'currentListing') {
+    return currentListing?.taxonomy
+      ? {
+          taxonomyType: currentListing.taxonomy.type,
+          taxonomySlug: currentListing.taxonomy.slug,
+        }
+      : null
+  }
+
+  if (
+    filter.mode === 'specificTaxonomy' &&
+    filter.taxonomyType &&
+    filter.taxonomySlug
+  ) {
+    return {
+      taxonomyType: filter.taxonomyType,
+      taxonomySlug: filter.taxonomySlug,
+    }
+  }
+
+  return null
+})
+
+const cacheKey = `cms-list:${host}:${apiType.value}:${fetchCount.value}:${currentPage.value}:${content.value.filter?.mode ?? 'all'}:${resolvedTaxonomy.value?.taxonomyType ?? ''}:${resolvedTaxonomy.value?.taxonomySlug ?? ''}`
 
 const { data, pending, error } = await useAsyncData<PublicContentListResponse | null>(
   cacheKey,
   () =>
     fetchPublicContentList(host, apiType.value, {
       count: fetchCount.value,
-      categorySlug: content.value.categorySlug,
+      current: currentPage.value,
+      taxonomyType: resolvedTaxonomy.value?.taxonomyType ?? null,
+      taxonomySlug: resolvedTaxonomy.value?.taxonomySlug ?? null,
     }),
-  { default: () => null }
+  {
+    default: () => null,
+    watch: [currentPage, fetchCount, resolvedTaxonomy],
+  }
 )
 
 const items = computed<PublicContentItem[]>(() =>
@@ -109,6 +231,60 @@ const visibleItems = computed<PublicContentItem[]>(() => {
   return items.value.slice(0, content.value.itemCount)
 })
 
+const totalItems = computed(() => Number(data.value?.total ?? visibleItems.value.length))
+const resolvedCurrentPage = computed(() => Number(data.value?.currentPage ?? currentPage.value))
+const lastPage = computed(() => Number(data.value?.lastPage ?? 1))
+const showPagination = computed(
+  () =>
+    paginationEnabled.value &&
+    lastPage.value > 1 &&
+    totalItems.value > content.value.itemCount &&
+    visibleItems.value.length > 0 &&
+    !pending.value &&
+    !error.value
+)
+
+type PaginationToken = number | 'gap'
+
+const paginationTokens = computed<PaginationToken[]>(() => {
+  const totalPages = Math.max(1, lastPage.value)
+  const activePage = Math.max(1, Math.min(resolvedCurrentPage.value, totalPages))
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  const pages = new Set<number>([1, totalPages, activePage])
+  if (activePage > 2) pages.add(activePage - 1)
+  if (activePage < totalPages - 1) pages.add(activePage + 1)
+
+  const sorted = [...pages].sort((a, b) => a - b)
+  const tokens: PaginationToken[] = []
+  sorted.forEach((page, index) => {
+    const previous = sorted[index - 1]
+    if (previous && page - previous > 1) {
+      tokens.push('gap')
+    }
+    tokens.push(page)
+  })
+  return tokens
+})
+
+function paginationHref(page: number): string {
+  const query = new URLSearchParams()
+  Object.entries(route.query).forEach(([key, value]) => {
+    if (key === 'page') return
+    const values = Array.isArray(value) ? value : [value]
+    values.forEach((entry) => {
+      if (entry != null) query.append(key, String(entry))
+    })
+  })
+  if (page > 1) {
+    query.set('page', String(page))
+  }
+  const qs = query.toString()
+  return qs ? `${route.path}?${qs}` : route.path
+}
+
 const layout = computed(() => content.value.layout)
 
 const desktopGridClass = computed(() =>
@@ -118,10 +294,7 @@ const desktopGridClass = computed(() =>
 const nuxtLink = resolveComponent('NuxtLink')
 
 function itemHref(item: PublicContentItem): string | null {
-  const key = item?.slug || item?.id
-  if (!key) return null
-  const segment = source.value === 'events' ? 'events' : 'articles'
-  return `/${segment}/${key}`
+  return resolveContentItemHref(item, contentPrefixes)
 }
 
 function itemComponent(item: PublicContentItem) {
@@ -133,9 +306,27 @@ const errorMessage = computed(() => {
   return value?.message || ''
 })
 
+const isOnTaxonomyArchive = computed(
+  () => currentListing?.taxonomy != null
+)
+
+const resolvedHeading = computed<string | null>(() => {
+  if (!content.value.showHeading) return null
+  const mode = content.value.headingMode ?? 'static'
+  if (mode === 'hide-on-archive' && isOnTaxonomyArchive.value) return null
+  if (mode === 'archive-title') {
+    const taxonomyTitle = currentListing?.taxonomy?.title
+    if (!taxonomyTitle) return content.value.heading.trim() || null
+    const prefix = (content.value.archiveTitlePrefix ?? '').trim()
+    const suffix = (content.value.archiveTitleSuffix ?? '').trim()
+    return [prefix, taxonomyTitle, suffix].filter(Boolean).join(' ')
+  }
+  return content.value.heading.trim() || null
+})
+
 const showHeader = computed(
   () =>
-    (content.value.showHeading && content.value.heading.trim()) ||
+    resolvedHeading.value !== null ||
     (content.value.showDescription && content.value.description.trim())
 )
 
@@ -157,10 +348,10 @@ const featuredRest = computed(() => visibleItems.value.slice(1))
   >
     <header v-if="showHeader" class="wt-cms-list__header">
       <h2
-        v-if="content.showHeading && content.heading.trim()"
+        v-if="resolvedHeading"
         class="wt-cms-list__heading"
       >
-        {{ content.heading }}
+        {{ resolvedHeading }}
       </h2>
       <p
         v-if="content.showDescription && content.description.trim()"
@@ -499,6 +690,62 @@ const featuredRest = computed(() => visibleItems.value.slice(1))
         </div>
       </component>
     </div>
+
+    <nav
+      v-if="showPagination"
+      class="wt-cms-list__pagination"
+      :aria-label="source === 'events' ? 'Events pagination' : 'Articles pagination'"
+    >
+      <p
+        v-if="pagination.showSummary"
+        class="wt-cms-list__pagination-summary"
+      >
+        Page {{ resolvedCurrentPage }} of {{ lastPage }} | {{ totalItems }} total | {{ content.itemCount }} per page
+      </p>
+      <div class="wt-cms-list__pagination-controls">
+        <NuxtLink
+          :to="paginationHref(Math.max(1, resolvedCurrentPage - 1))"
+          class="wt-cms-list__pagination-link"
+          :class="{ 'wt-cms-list__pagination-link--disabled': resolvedCurrentPage <= 1 }"
+          :aria-disabled="resolvedCurrentPage <= 1 ? 'true' : undefined"
+          :tabindex="resolvedCurrentPage <= 1 ? -1 : undefined"
+        >
+          Previous
+        </NuxtLink>
+
+        <template
+          v-for="(token, index) in paginationTokens"
+          :key="`${token}-${index}`"
+        >
+          <span
+            v-if="token === 'gap'"
+            class="wt-cms-list__pagination-gap"
+            aria-hidden="true"
+          >
+            ...
+          </span>
+          <NuxtLink
+            v-else
+            :to="paginationHref(token)"
+            class="wt-cms-list__pagination-link wt-cms-list__pagination-link--page"
+            :class="{ 'wt-cms-list__pagination-link--active': token === resolvedCurrentPage }"
+            :aria-current="token === resolvedCurrentPage ? 'page' : undefined"
+          >
+            {{ token }}
+          </NuxtLink>
+        </template>
+
+        <NuxtLink
+          :to="paginationHref(Math.min(lastPage, resolvedCurrentPage + 1))"
+          class="wt-cms-list__pagination-link"
+          :class="{ 'wt-cms-list__pagination-link--disabled': resolvedCurrentPage >= lastPage }"
+          :aria-disabled="resolvedCurrentPage >= lastPage ? 'true' : undefined"
+          :tabindex="resolvedCurrentPage >= lastPage ? -1 : undefined"
+        >
+          Next
+        </NuxtLink>
+      </div>
+    </nav>
   </section>
 </template>
 
@@ -792,5 +1039,74 @@ const featuredRest = computed(() => visibleItems.value.slice(1))
   width: 0.875rem;
   height: 0.875rem;
   flex-shrink: 0;
+}
+
+.wt-cms-list__pagination {
+  margin-top: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.wt-cms-list__pagination-summary {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
+.wt-cms-list__pagination-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.wt-cms-list__pagination-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  border: 1px solid currentColor;
+  padding: 0.375rem 0.75rem;
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.wt-cms-list__pagination-link:hover {
+  border-color: var(--builder-color-primary, var(--wt-color-primary, #2563eb));
+  background: color-mix(in srgb, var(--builder-color-primary, var(--wt-color-primary, #2563eb)) 8%, transparent);
+}
+
+.wt-cms-list__pagination-link--page {
+  min-width: 2.25rem;
+  font-weight: 600;
+  opacity: 0.55;
+}
+
+.wt-cms-list__pagination-link--active {
+  border-color: var(--builder-color-primary, var(--wt-color-primary, #2563eb));
+  background: var(--builder-color-primary, var(--wt-color-primary, #2563eb));
+  color: var(--builder-color-background, var(--wt-color-bg, #ffffff));
+  opacity: 1;
+}
+
+.wt-cms-list__pagination-link--disabled {
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.wt-cms-list__pagination-gap {
+  display: inline-flex;
+  min-width: 1.25rem;
+  justify-content: center;
+  padding-inline: 0.25rem;
+  font-size: 0.75rem;
+  opacity: 0.5;
 }
 </style>

@@ -424,6 +424,9 @@ function getRouteRules(arg) {
     return {};
   }
 }
+const __nuxt_page_meta$4 = { layout: false };
+const __nuxt_page_meta$3 = { layout: false };
+const __nuxt_page_meta$2 = { layout: false };
 const __nuxt_page_meta$1 = { layout: false };
 const __nuxt_page_meta = { layout: false };
 const _routes = [
@@ -440,14 +443,32 @@ const _routes = [
   {
     name: "events-slug",
     path: "/events/:slug()",
-    meta: __nuxt_page_meta$1 || {},
-    component: () => import('./_slug_-bbhiK9Ut.mjs')
+    meta: __nuxt_page_meta$4 || {},
+    component: () => import('./_slug_-CS-hu1uX.mjs')
+  },
+  {
+    name: "articles",
+    path: "/articles",
+    meta: __nuxt_page_meta$3 || {},
+    component: () => import('./index-DUrF1mFC.mjs')
   },
   {
     name: "articles-slug",
     path: "/articles/:slug()",
+    meta: __nuxt_page_meta$2 || {},
+    component: () => import('./_slug_-BSeoKnzn.mjs')
+  },
+  {
+    name: "articles-tag-slug",
+    path: "/articles/tag/:slug()",
+    meta: __nuxt_page_meta$1 || {},
+    component: () => import('./_slug_-bUOWPpys.mjs')
+  },
+  {
+    name: "articles-category-slug",
+    path: "/articles/category/:slug()",
     meta: __nuxt_page_meta || {},
-    component: () => import('./_slug_-ne17ixoz.mjs')
+    component: () => import('./_slug_-DAnxaZA5.mjs')
   }
 ];
 const _wrapInTransition = (props, children) => {
@@ -837,7 +858,7 @@ const plugins = [
   fontawesome_Q3IsgyqLBh1UKEylzguvAAGnY_M0M67ZFjQjgD7J1rI
 ];
 const layouts = {
-  default: defineAsyncComponent(() => import('./default-BrnIQH3A.mjs').then((m) => m.default || m))
+  default: defineAsyncComponent(() => import('./default-BS8ef8BC.mjs').then((m) => m.default || m))
 };
 const routeRulesMatcher = _routeRulesMatcher;
 const LayoutLoader = defineComponent({

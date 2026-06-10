@@ -109,7 +109,31 @@ provide(runtimeMenusKey, runtimeMenus)
 provide(runtimeHeaderSchemaKey, runtimeHeaderSchema)
 provide(runtimeHeaderOverlayKey, runtimeHeaderOverlay)
 
+// Load the theme's web fonts. The Google Fonts css2 CSV is carried in
+// builderStyles.typography.googleFonts (set by the generator); without this the
+// page falls back to device-installed fonts.
+const googleFontsHref = computed(() => {
+  const styles = props.site?.builderStyles
+  const typo =
+    styles && typeof styles === 'object' && !Array.isArray(styles)
+      ? (styles as Record<string, unknown>).typography
+      : null
+  const raw =
+    typo && typeof typo === 'object' && !Array.isArray(typo)
+      ? (typo as Record<string, unknown>).googleFonts
+      : null
+  const families = Array.isArray(raw)
+    ? raw.filter((f): f is string => typeof f === 'string' && f.trim() !== '')
+    : []
+  if (families.length === 0) return ''
+  const params = families.map((f) => `family=${f.replace(/ /g, '+')}`).join('&')
+  return `https://fonts.googleapis.com/css2?${params}&display=swap`
+})
+
 useHead(() => ({
+  link: googleFontsHref.value
+    ? [{ key: 'wt-google-fonts', rel: 'stylesheet', href: googleFontsHref.value }]
+    : [],
   style: responsiveCss.value
     ? [{
         key: 'wt-responsive-runtime',

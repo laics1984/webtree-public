@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { provide } from 'vue'
+import { computed, provide } from 'vue'
 import PublicSiteShell from '~/components/public/PublicSiteShell.vue'
 import SchemaRenderer from '~/components/renderer/SchemaRenderer.vue'
 import { currentItemKey } from '~/lib/currentItem'
+import type { PublicContentItemType } from '~/types/public'
 
-definePageMeta({ layout: false })
+const props = defineProps<{
+  type: PublicContentItemType
+  slug: string
+}>()
 
-const route = useRoute()
-const slug = String(route.params.slug)
-
-const payload = await useDetailPage('article', slug)
+const payload = await useDetailPage(props.type, props.slug)
 
 provide(currentItemKey, payload.value!.content.item)
 
@@ -17,17 +18,20 @@ const template = computed(() => payload.value!.template.template)
 const item = computed(() => payload.value!.content.item)
 const entity = computed(() => payload.value!.template.entity)
 const site = computed(() => payload.value!.template.site)
+const scope = computed(() => (props.type === 'event' ? 'event-template' : 'article-template'))
 
 useHead({
-  title: item.value.title,
-  meta: [
-    { name: 'description', content: item.value.excerpt || '' },
-  ],
+  title: () => item.value.title,
+  meta: [{ name: 'description', content: () => item.value.excerpt || '' }],
+  link: () =>
+    item.value.canonicalPath
+      ? [{ rel: 'canonical', href: item.value.canonicalPath }]
+      : [],
 })
 </script>
 
 <template>
   <PublicSiteShell :entity="entity" :site="site" :body-schema="template.bodySchema">
-    <SchemaRenderer :schema="template.bodySchema" scope="article-template" />
+    <SchemaRenderer :schema="template.bodySchema" :scope="scope" />
   </PublicSiteShell>
 </template>

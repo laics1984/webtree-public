@@ -2,7 +2,7 @@
 import type { CSSProperties } from 'vue'
 import type { PublicBlockNode } from '~/types/public'
 import ElementRenderer from '~/components/renderer/ElementRenderer.vue'
-import { getNodeClasses, getNodeStyles } from '~/lib/blockRuntime'
+import { getNodeClasses, getNodeStyles, getStringField } from '~/lib/blockRuntime'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
 import { getNodeChildren, getNodeKey, normalizeBlockType } from '~/lib/schema'
 import {
@@ -21,6 +21,9 @@ const children = computed(() => getNodeChildren(props.node))
 const nodeClasses = computed(() => getNodeClasses(props.node))
 const nodeStyles = computed(() => getNodeStyles(props.node))
 const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
+// Optional in-page anchor target (e.g. a hero "scroll to content" CTA). Rendered
+// as the HTML id so `#sec-...` hrefs resolve and smooth-scroll to this section.
+const anchorId = computed(() => getStringField(props.node, 'anchorId') || undefined)
 const tag = computed(() => nodeType.value === 'section' ? 'section' : 'div')
 const isTwoColumnLayout = computed(() => nodeType.value === '2col')
 const isThreeColumnLayout = computed(() => nodeType.value === '3col')
@@ -95,6 +98,7 @@ const overlayStyle = computed<CSSProperties | null>(() => {
       },
     ]"
     :style="resolvedStyles"
+    :id="anchorId || undefined"
     :data-wt-node-id="nodeDomId"
   >
     <div

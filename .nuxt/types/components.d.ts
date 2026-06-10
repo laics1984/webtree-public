@@ -14,6 +14,7 @@ type HydrationStrategies = {
 type LazyComponent<T> = DefineComponent<HydrationStrategies, {}, {}, {}, {}, {}, {}, { hydrated: () => void }> & T
 
 interface _GlobalComponents {
+  BlocksCmsArchiveHeaderBlock: typeof import("../../components/blocks/CmsArchiveHeaderBlock.vue")['default']
   BlocksCmsListBlock: typeof import("../../components/blocks/CmsListBlock.vue")['default']
   BlocksContactFormBlock: typeof import("../../components/blocks/ContactFormBlock.vue")['default']
   BlocksContainerBlock: typeof import("../../components/blocks/ContainerBlock.vue")['default']
@@ -24,6 +25,8 @@ interface _GlobalComponents {
   BlocksMenuBlock: typeof import("../../components/blocks/MenuBlock.vue")['default']
   BlocksSectionBlock: typeof import("../../components/blocks/SectionBlock.vue")['default']
   BlocksTextBlock: typeof import("../../components/blocks/TextBlock.vue")['default']
+  PublicContentDetail: typeof import("../../components/public/ContentDetail.vue")['default']
+  PublicContentListing: typeof import("../../components/public/ContentListing.vue")['default']
   PublicSitePage: typeof import("../../components/public/PublicSitePage.vue")['default']
   PublicSiteShell: typeof import("../../components/public/PublicSiteShell.vue")['default']
   RendererElementRenderer: typeof import("../../components/renderer/ElementRenderer.vue")['default']
@@ -51,6 +54,7 @@ interface _GlobalComponents {
   Html: typeof import("../../node_modules/nuxt/dist/head/runtime/components")['Html']
   Body: typeof import("../../node_modules/nuxt/dist/head/runtime/components")['Body']
   NuxtIsland: typeof import("../../node_modules/nuxt/dist/app/components/nuxt-island")['default']
+  LazyBlocksCmsArchiveHeaderBlock: LazyComponent<typeof import("../../components/blocks/CmsArchiveHeaderBlock.vue")['default']>
   LazyBlocksCmsListBlock: LazyComponent<typeof import("../../components/blocks/CmsListBlock.vue")['default']>
   LazyBlocksContactFormBlock: LazyComponent<typeof import("../../components/blocks/ContactFormBlock.vue")['default']>
   LazyBlocksContainerBlock: LazyComponent<typeof import("../../components/blocks/ContainerBlock.vue")['default']>
@@ -61,6 +65,8 @@ interface _GlobalComponents {
   LazyBlocksMenuBlock: LazyComponent<typeof import("../../components/blocks/MenuBlock.vue")['default']>
   LazyBlocksSectionBlock: LazyComponent<typeof import("../../components/blocks/SectionBlock.vue")['default']>
   LazyBlocksTextBlock: LazyComponent<typeof import("../../components/blocks/TextBlock.vue")['default']>
+  LazyPublicContentDetail: LazyComponent<typeof import("../../components/public/ContentDetail.vue")['default']>
+  LazyPublicContentListing: LazyComponent<typeof import("../../components/public/ContentListing.vue")['default']>
   LazyPublicSitePage: LazyComponent<typeof import("../../components/public/PublicSitePage.vue")['default']>
   LazyPublicSiteShell: LazyComponent<typeof import("../../components/public/PublicSiteShell.vue")['default']>
   LazyRendererElementRenderer: LazyComponent<typeof import("../../components/renderer/ElementRenderer.vue")['default']>

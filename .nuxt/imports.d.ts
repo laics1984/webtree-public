@@ -30,6 +30,8 @@ export { requestIdleCallback, cancelIdleCallback } from '#app/compat/idle-callba
 export { setInterval } from '#app/compat/interval';
 export { definePageMeta } from '../node_modules/nuxt/dist/pages/runtime/composables';
 export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
+export { useArticleListingPage, ArticleListingPageOptions, ArticleListingPagePayload } from '../composables/useArticleListingPage';
+export { useContentListingPage, ContentListingPageOptions, ContentListingPagePayload } from '../composables/useContentListingPage';
 export { useDetailPage, DetailPagePayload } from '../composables/useDetailPage';
 export { usePublicPage } from '../composables/usePublicPage';
 export { usePublicSeo } from '../composables/usePublicSeo';
