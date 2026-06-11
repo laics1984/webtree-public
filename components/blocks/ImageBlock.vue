@@ -6,6 +6,9 @@ import { getNodeDomId } from '~/lib/responsiveRuntime'
 const props = defineProps<{ node: Record<string, any> }>()
 const src = computed(() => getStringField(props.node, 'src', 'imageUrl'))
 const alt = computed(() => getStringField(props.node, 'alt', 'title') || '')
+const href = computed(() => getStringField(props.node, 'href') || '')
+const ariaLabel = computed(() => getStringField(props.node, 'ariaLabel') || undefined)
+const isExternalHref = computed(() => /^(https?:)?\/\//.test(href.value))
 const isHero = computed(() => getBooleanField(props.node, 'priority') || getStringField(props.node, 'fetchpriority') === 'high')
 const nodeClasses = computed(() => getNodeClasses(props.node))
 const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
@@ -30,7 +33,24 @@ const imgStyle = computed(() => {
     :style="nodeStyles"
     :data-wt-node-id="nodeDomId"
   >
+    <NuxtLink
+      v-if="href"
+      class="wt-image-link"
+      :to="href"
+      :external="isExternalHref"
+      :aria-label="ariaLabel"
+    >
+      <img
+        class="wt-image"
+        :src="src"
+        :alt="alt"
+        :style="imgStyle"
+        :loading="isHero ? 'eager' : 'lazy'"
+        :fetchpriority="isHero ? 'high' : 'auto'"
+      />
+    </NuxtLink>
     <img
+      v-else
       class="wt-image"
       :src="src"
       :alt="alt"
@@ -43,5 +63,6 @@ const imgStyle = computed(() => {
 
 <style scoped>
 .wt-image-block { max-width: 100%; }
+.wt-image-link { display: block; width: 100%; height: 100%; }
 .wt-image { width: 100%; height: 100%; display: block; /* object-fit/object-position driven by :style binding */ }
 </style>

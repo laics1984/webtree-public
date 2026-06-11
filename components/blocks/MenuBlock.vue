@@ -191,6 +191,14 @@ const runtimeHeaderOverlay = inject(runtimeHeaderOverlayKey, computed(() => fals
 const isMobileMenuOpen = ref(false)
 const previousBodyOverflow = ref<string | null>(null)
 
+// Desktop dropdown state — at most one flyout open at a time. Timers give
+// hover intent: a short delay before opening (so skimming the bar doesn't
+// flash flyouts) and a longer one before closing (so the pointer can travel
+// from trigger to panel without the flyout vanishing).
+const openDropdownKey = ref<string | null>(null)
+let dropdownOpenTimer: ReturnType<typeof setTimeout> | null = null
+let dropdownCloseTimer: ReturnType<typeof setTimeout> | null = null
+
 const nodeClasses = computed(() => getNodeClasses(props.node))
 const nodeStyles = computed(() => getNodeStyles(props.node))
 const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
@@ -200,11 +208,21 @@ const slot = computed(() => (getStringField(props.node, 'slot') || '').trim().to
 const menuLabel = computed(() => getStringField(props.node, 'menuLabel') || 'Site navigation')
 const isHeaderPrimaryMenu = computed(() => slot.value === 'primary' || variant.value === 'header-inline')
 const isHeaderUtilityMenu = computed(() => slot.value === 'utility' || variant.value === 'utility-inline')
+const isFooterColumnsMenu = computed(() => slot.value === 'footer' || variant.value === 'footer-columns')
 const isOverlayHeader = computed(() => runtimeHeaderOverlay.value)
 
 const items = computed<RuntimeMenuItem[]>(() => resolveMenuItemsForNode(props.node))
 const visibleItems = computed(() => items.value.filter((item) => item?.visible !== false))
 const flattenedVisibleItems = computed(() => flattenMenuItems(visibleItems.value))
+
+// Grouped footer layout only when at least one item carries children —
+// all-flat footer menus keep the plain inline rendering, matching the
+// builder's footer-columns flat fallback.
+const hasFooterColumnGroups = computed(
+  () =>
+    isFooterColumnsMenu.value &&
+    visibleItems.value.some((item) => visibleChildren(item).length > 0)
+)
 
 const headerSupplemental = computed(() => {
   const utilityItems: RuntimeMenuItem[] = []
@@ -300,6 +318,7 @@ watch(
   () => route.fullPath,
   () => {
     closeMobileMenu()
+    closeDropdown()
   }
 )
 
@@ -329,6 +348,71 @@ onBeforeUnmount(() => {
 function closeMobileMenu() {
   isMobileMenuOpen.value = false
 }
+
+function visibleChildren(item: RuntimeMenuItem): RuntimeMenuItem[] {
+  // One nesting level only — grandchildren are ignored by design.
+  return (item.children ?? []).filter((child) => child && child.visible !== false)
+}
+
+function dropdownKey(item: RuntimeMenuItem, index: number) {
+  return `${item.id || item.href || item.label || 'item'}:${index}`
+}
+
+function isDropdownOpen(key: string) {
+  return openDropdownKey.value === key
+}
+
+function clearDropdownTimers() {
+  if (dropdownOpenTimer) {
+    clearTimeout(dropdownOpenTimer)
+    dropdownOpenTimer = null
+  }
+  if (dropdownCloseTimer) {
+    clearTimeout(dropdownCloseTimer)
+    dropdownCloseTimer = null
+  }
+}
+
+function scheduleDropdownOpen(key: string) {
+  clearDropdownTimers()
+  dropdownOpenTimer = setTimeout(() => {
+    openDropdownKey.value = key
+  }, 80)
+}
+
+function scheduleDropdownClose() {
+  clearDropdownTimers()
+  dropdownCloseTimer = setTimeout(() => {
+    openDropdownKey.value = null
+  }, 160)
+}
+
+function toggleDropdown(key: string) {
+  clearDropdownTimers()
+  openDropdownKey.value = openDropdownKey.value === key ? null : key
+}
+
+function closeDropdown() {
+  clearDropdownTimers()
+  openDropdownKey.value = null
+}
+
+function onDropdownFocusOut(event: FocusEvent) {
+  const next = event.relatedTarget
+  const container = event.currentTarget
+  if (
+    container instanceof HTMLElement &&
+    next instanceof Node &&
+    container.contains(next)
+  ) {
+    return
+  }
+  closeDropdown()
+}
+
+onBeforeUnmount(() => {
+  clearDropdownTimers()
+})
 
 function resolveMenuItemsForNode(node: PublicBlockNode | Record<string, unknown>): RuntimeMenuItem[] {
   const directItems = getArrayField<RuntimeMenuItem>(node, 'items')
@@ -438,17 +522,69 @@ function isExternalHref(href?: string | null) {
     :data-wt-node-id="nodeDomId"
   >
     <nav class="wt-menu wt-menu--desktop">
-      <NuxtLink
-        v-for="item in visibleItems"
-        :key="item.href || item.label"
-        class="wt-menu-link wt-ui-link"
-        :to="item.href || '#'"
-        :target="item.target || undefined"
-        :rel="item.rel || undefined"
-        :external="isExternalHref(item.href)"
-      >
-        {{ item.label }}
-      </NuxtLink>
+      <template v-for="(item, index) in visibleItems" :key="item.href || item.label">
+        <div
+          v-if="visibleChildren(item).length"
+          class="wt-menu-item--dropdown"
+          :class="{ 'wt-menu-item--open': isDropdownOpen(dropdownKey(item, index)) }"
+          @mouseenter="scheduleDropdownOpen(dropdownKey(item, index))"
+          @mouseleave="scheduleDropdownClose()"
+          @focusout="onDropdownFocusOut"
+          @keydown.escape.stop="closeDropdown()"
+        >
+          <span class="wt-menu-item__trigger">
+            <NuxtLink
+              class="wt-menu-link wt-ui-link"
+              :to="item.href || '#'"
+              :target="item.target || undefined"
+              :rel="item.rel || undefined"
+              :external="isExternalHref(item.href)"
+              @click="closeDropdown()"
+            >
+              {{ item.label }}
+            </NuxtLink>
+            <button
+              type="button"
+              class="wt-menu-caret"
+              :aria-expanded="isDropdownOpen(dropdownKey(item, index))"
+              :aria-controls="`wt-menu-flyout-${nodeDomId || 'menu'}-${index}`"
+              :aria-label="`${item.label} submenu`"
+              @click.prevent="toggleDropdown(dropdownKey(item, index))"
+            >
+              <span class="wt-menu-caret__icon" aria-hidden="true" />
+            </button>
+          </span>
+          <div
+            v-show="isDropdownOpen(dropdownKey(item, index))"
+            :id="`wt-menu-flyout-${nodeDomId || 'menu'}-${index}`"
+            class="wt-menu-flyout"
+            :class="{ 'wt-menu-flyout--overlay': isOverlayHeader }"
+          >
+            <NuxtLink
+              v-for="child in visibleChildren(item)"
+              :key="child.id || child.href || child.label"
+              class="wt-menu-flyout__link"
+              :to="child.href || '#'"
+              :target="child.target || undefined"
+              :rel="child.rel || undefined"
+              :external="isExternalHref(child.href)"
+              @click="closeDropdown()"
+            >
+              {{ child.label }}
+            </NuxtLink>
+          </div>
+        </div>
+        <NuxtLink
+          v-else
+          class="wt-menu-link wt-ui-link"
+          :to="item.href || '#'"
+          :target="item.target || undefined"
+          :rel="item.rel || undefined"
+          :external="isExternalHref(item.href)"
+        >
+          {{ item.label }}
+        </NuxtLink>
+      </template>
     </nav>
 
     <div class="wt-header-menu-toggle">
@@ -550,6 +686,48 @@ function isExternalHref(href?: string | null) {
   </div>
 
   <nav
+    v-else-if="hasFooterColumnGroups"
+    class="wt-footer-columns"
+    :class="nodeClasses"
+    :style="resolvedStyles"
+    :data-wt-node-id="nodeDomId"
+    :aria-label="menuLabel"
+  >
+    <div
+      v-for="(group, index) in visibleItems"
+      :key="group.id || group.href || group.label || index"
+      class="wt-footer-columns__group"
+      :class="{ 'wt-footer-columns__group--has-children': visibleChildren(group).length > 0 }"
+    >
+      <NuxtLink
+        v-if="group.href"
+        class="wt-footer-columns__heading wt-ui-link"
+        :to="group.href"
+        :target="group.target || undefined"
+        :rel="group.rel || undefined"
+        :external="isExternalHref(group.href)"
+      >
+        {{ group.label }}
+      </NuxtLink>
+      <span v-else class="wt-footer-columns__heading">{{ group.label }}</span>
+
+      <ul v-if="visibleChildren(group).length" class="wt-footer-columns__list">
+        <li v-for="child in visibleChildren(group)" :key="child.id || child.href || child.label">
+          <NuxtLink
+            class="wt-menu-link wt-ui-link"
+            :to="child.href || '#'"
+            :target="child.target || undefined"
+            :rel="child.rel || undefined"
+            :external="isExternalHref(child.href)"
+          >
+            {{ child.label }}
+          </NuxtLink>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <nav
     v-else
     class="wt-menu"
     :class="[nodeClasses, { 'wt-menu--hide-mobile': isHeaderUtilityMenu }]"
@@ -586,6 +764,145 @@ function isExternalHref(href?: string | null) {
 .wt-menu-link {
   color: inherit;
   text-decoration: none;
+}
+
+/* Grouped footer navigation — CSS multi-column rather than a grid. A grid
+   couples row heights across columns, so a tall multi-link group inflates its
+   whole row and leaves big gaps below the single-link items beside it.
+   Multi-column packs each column independently: bare links stack tightly and
+   only true groups (with children) take extra separation below. */
+.wt-footer-columns {
+  column-count: 1;
+  column-gap: 2.5rem;
+  color: inherit;
+}
+
+@media (min-width: 768px) {
+  .wt-footer-columns {
+    column-count: 2;
+  }
+}
+
+@media (min-width: 1280px) {
+  .wt-footer-columns {
+    column-count: 3;
+  }
+}
+
+.wt-footer-columns__group {
+  break-inside: avoid;
+  margin-bottom: 0.5rem;
+}
+
+.wt-footer-columns__group--has-children {
+  margin-bottom: 1.5rem;
+}
+
+.wt-footer-columns__heading {
+  display: block;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
+}
+
+.wt-footer-columns__group--has-children .wt-footer-columns__heading {
+  margin-bottom: 0.5rem;
+}
+
+.wt-footer-columns__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  opacity: 0.85;
+}
+
+.wt-menu-item--dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.wt-menu-item__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.wt-menu-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.wt-menu-caret__icon {
+  display: block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-15%);
+  transition: transform 0.15s ease;
+}
+
+.wt-menu-item--open .wt-menu-caret__icon {
+  transform: rotate(225deg) translateY(-15%);
+}
+
+.wt-menu-flyout {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+  display: flex;
+  min-width: 200px;
+  max-width: 280px;
+  flex-direction: column;
+  padding: 0.5rem;
+  border-radius: 12px;
+  background: var(--wt-color-surface, #ffffff);
+  color: var(--wt-color-text, #0f172a);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(148, 163, 184, 0.18);
+}
+
+.wt-menu-flyout--overlay {
+  background: rgba(15, 23, 42, 0.92);
+  color: #ffffff;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.wt-menu-flyout__link {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  color: inherit;
+  font-size: 0.925rem;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wt-menu-flyout__link:hover,
+.wt-menu-flyout__link:focus-visible {
+  background: rgba(148, 163, 184, 0.16);
+}
+
+.wt-menu-flyout--overlay .wt-menu-flyout__link:hover,
+.wt-menu-flyout--overlay .wt-menu-flyout__link:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .wt-header-menu-toggle {
