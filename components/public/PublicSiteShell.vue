@@ -109,6 +109,13 @@ provide(runtimeMenusKey, runtimeMenus)
 provide(runtimeHeaderSchemaKey, runtimeHeaderSchema)
 provide(runtimeHeaderOverlayKey, runtimeHeaderOverlay)
 
+// Entrance/scroll motion declared on schema nodes (`motion` annotations from
+// the section catalog / builder). Client-only; SSR markup is never hidden.
+useSchemaMotion({
+  schemas: () => [props.site?.headerSchema, props.bodySchema, props.site?.footerSchema],
+  builderStyles: () => props.site?.builderStyles,
+})
+
 // Load the theme's web fonts. The Google Fonts css2 CSV is carried in
 // builderStyles.typography.googleFonts (set by the generator); without this the
 // page falls back to device-installed fonts.
