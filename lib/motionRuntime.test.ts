@@ -61,6 +61,17 @@ describe('collectMotionTargets', () => {
     const schema = [node({ id: undefined, motion: { preset: 'fade' } })]
     expect(collectMotionTargets([schema])).toEqual([])
   })
+
+  it('collects webgl backdrop presets', () => {
+    const schema = [
+      node({ id: 'hero', motion: { preset: 'aurora' } }),
+      node({ id: 'cta', motion: { preset: 'silk' } }),
+    ]
+    expect(collectMotionTargets([schema])).toEqual([
+      { nodeId: 'hero', motion: { preset: 'aurora' } },
+      { nodeId: 'cta', motion: { preset: 'silk' } },
+    ])
+  })
 })
 
 describe('resolveSiteMotionIntensity', () => {

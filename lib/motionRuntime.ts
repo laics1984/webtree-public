@@ -39,7 +39,7 @@ export type MotionTarget = {
 }
 
 type PresetDef = {
-  tier: 'css' | 'gsap'
+  tier: 'css' | 'gsap' | 'webgl'
   duration: number
   distance?: number
   scaleFrom?: number
@@ -80,6 +80,9 @@ const PRESETS: Record<string, PresetDef> = {
     transformFrom: (d) => `translateX(-${d}px)`,
   },
   'parallax-drift': { tier: 'gsap', duration: 0, distance: 80, easing: 'none' },
+  // webgl tier: ambient shader backdrops (lib/webglBackdrop.ts lazy chunk).
+  aurora: { tier: 'webgl', duration: 0, easing: 'none' },
+  silk: { tier: 'webgl', duration: 0, easing: 'none' },
 }
 
 const INTENSITY_FACTORS: Record<
@@ -220,8 +223,10 @@ export function startMotionRuntime(options: MotionRuntimeOptions): () => void {
   const timeouts = new Set<ReturnType<typeof setTimeout>>()
   const pendingElements = new Set<HTMLElement>()
   const parallaxTargets: Array<{ el: HTMLElement; motion: MotionAnnotation }> = []
+  const webglTargets: Array<{ el: HTMLElement; motion: MotionAnnotation }> = []
   let stopped = false
   let killParallax: (() => void) | null = null
+  let killWebgl: (() => void) | null = null
 
   ensureRuntimeStylesheet()
 
@@ -238,6 +243,13 @@ export function startMotionRuntime(options: MotionRuntimeOptions): () => void {
 
     if (preset.tier === 'gsap') {
       parallaxTargets.push({ el, motion: target.motion })
+      continue
+    }
+
+    // Backdrops are persistent layers, not entrances — they mount even above
+    // the fold (heroes are their primary use case).
+    if (preset.tier === 'webgl') {
+      webglTargets.push({ el, motion: target.motion })
       continue
     }
 
@@ -316,6 +328,13 @@ export function startMotionRuntime(options: MotionRuntimeOptions): () => void {
     })
   }
 
+  if (webglTargets.length > 0) {
+    void loadWebglBackdrops(webglTargets, intensity).then((kill) => {
+      if (stopped) kill?.()
+      else killWebgl = kill
+    })
+  }
+
   return () => {
     stopped = true
     observer?.disconnect()
@@ -324,6 +343,8 @@ export function startMotionRuntime(options: MotionRuntimeOptions): () => void {
     pendingElements.clear()
     killParallax?.()
     killParallax = null
+    killWebgl?.()
+    killWebgl = null
   }
 }
 
@@ -389,4 +410,35 @@ async function loadParallax(
   return () => {
     for (const tween of tweens) tween.kill()
   }
+}
+
+/**
+ * WebGL tier: ambient shader backdrops (aurora/silk). Loaded as a lazy chunk
+ * only when the page carries such an annotation; setup failures degrade to
+ * the authored static background.
+ */
+async function loadWebglBackdrops(
+  targets: Array<{ el: HTMLElement; motion: MotionAnnotation }>,
+  intensity: MotionIntensity
+): Promise<(() => void) | null> {
+  let backdropModule: typeof import('~/lib/webglBackdrop')
+  try {
+    backdropModule = await import('~/lib/webglBackdrop')
+  } catch {
+    return null
+  }
+
+  const mounts = []
+  for (const { el, motion } of targets) {
+    const elementIntensity = motion.intensity ?? intensity
+    if (elementIntensity === 'off') continue
+    mounts.push({
+      el,
+      presetId: motion.preset,
+      energy: INTENSITY_FACTORS[elementIntensity].distance,
+    })
+  }
+  if (mounts.length === 0) return null
+
+  return backdropModule.mountWebglBackdrops(mounts)
 }
