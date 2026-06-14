@@ -7,7 +7,9 @@ import { getNodeDomId } from '~/lib/responsiveRuntime'
 import { getNodeChildren, getNodeKey, normalizeBlockType } from '~/lib/schema'
 import {
   getBackgroundPhotoSettings,
+  getBackgroundVideoSettings,
   hasBackgroundImage,
+  hasBackgroundVideo,
   pickBorderRadiusStyles,
   pickPhotoLayerStyles,
   stripPhotoStyles,
@@ -32,12 +34,50 @@ const isBodyRoot = computed(() => nodeType.value === 'body')
 const isHeaderRoot = computed(() => nodeType.value === 'header')
 const isFooterRoot = computed(() => nodeType.value === 'footer')
 
-const hasPhotoLayer = computed(() => hasBackgroundImage(nodeStyles.value))
+// Video wins over a photo on the same element (the builder sets one or the
+// other, but suppress the photo defensively if both are present).
+const hasVideoLayer = computed(() => hasBackgroundVideo(nodeStyles.value))
+const hasPhotoLayer = computed(
+  () => !hasVideoLayer.value && hasBackgroundImage(nodeStyles.value)
+)
+const hasMediaLayer = computed(() => hasPhotoLayer.value || hasVideoLayer.value)
 
 const photoSettings = computed(() => getBackgroundPhotoSettings(nodeStyles.value))
+const videoSettings = computed(() => getBackgroundVideoSettings(nodeStyles.value))
+
+const videoLayerStyle = computed<CSSProperties>(() => ({
+  opacity: Math.min(100, Math.max(0, photoSettings.value.photoOpacity)) / 100,
+}))
+
+// The poster shows on the server and stays put on mobile, under reduced-motion,
+// or when the visitor has Data Saver on. We only start playback on the client
+// once those guards pass, so the markup is hydration-stable.
+const bgVideoEl = ref<HTMLVideoElement | null>(null)
+
+onMounted(() => {
+  if (!hasVideoLayer.value) return
+
+  const prefersReducedMotion = window.matchMedia(
+    '(prefers-reduced-motion: reduce)'
+  ).matches
+  const isSmallScreen = window.matchMedia('(max-width: 768px)').matches
+  const saveData = Boolean(
+    (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+      ?.saveData
+  )
+
+  if (prefersReducedMotion || isSmallScreen || saveData) return
+
+  const video = bgVideoEl.value
+  if (!video) return
+
+  void video.play().catch(() => {
+    // Autoplay can still be blocked; the poster remains as the fallback.
+  })
+})
 
 const resolvedStyles = computed(() => {
-  const base = hasPhotoLayer.value
+  const base = hasMediaLayer.value
     ? stripPhotoStyles(nodeStyles.value)
     : { ...nodeStyles.value }
 
@@ -57,7 +97,7 @@ const resolvedStyles = computed(() => {
     height: isBodyRoot.value ? 'auto' : base.height || 'auto',
   }
 
-  if (hasPhotoLayer.value && !base.position) {
+  if (hasMediaLayer.value && !base.position) {
     merged.position = 'relative'
   }
 
@@ -90,11 +130,11 @@ const overlayStyle = computed<CSSProperties | null>(() => {
     :class="[
       nodeClasses,
       {
-        'wt-container-block--column-layout': isColumnLayout && !hasPhotoLayer,
-        'wt-container-block--two-col': isTwoColumnLayout && !hasPhotoLayer,
-        'wt-container-block--three-col': isThreeColumnLayout && !hasPhotoLayer,
+        'wt-container-block--column-layout': isColumnLayout && !hasMediaLayer,
+        'wt-container-block--two-col': isTwoColumnLayout && !hasMediaLayer,
+        'wt-container-block--three-col': isThreeColumnLayout && !hasMediaLayer,
         'wt-container-block--body-root': isBodyRoot,
-        'wt-container-block--has-photo': hasPhotoLayer,
+        'wt-container-block--has-photo': hasMediaLayer,
       },
     ]"
     :style="resolvedStyles"
@@ -102,12 +142,25 @@ const overlayStyle = computed<CSSProperties | null>(() => {
     :data-wt-node-id="nodeDomId"
   >
     <div
-      v-if="hasPhotoLayer"
+      v-if="hasMediaLayer"
       class="wt-container-block__bg-layer"
       :style="photoLayerClipStyle"
       aria-hidden="true"
     >
-      <div class="wt-container-block__bg-photo" :style="photoLayerStyle" />
+      <video
+        v-if="hasVideoLayer"
+        ref="bgVideoEl"
+        class="wt-container-block__bg-video"
+        :style="videoLayerStyle"
+        :src="videoSettings.src || undefined"
+        :poster="videoSettings.poster || undefined"
+        muted
+        loop
+        playsinline
+        preload="metadata"
+        tabindex="-1"
+      />
+      <div v-else class="wt-container-block__bg-photo" :style="photoLayerStyle" />
       <div
         v-if="overlayStyle"
         class="wt-container-block__bg-overlay"
@@ -116,7 +169,7 @@ const overlayStyle = computed<CSSProperties | null>(() => {
     </div>
 
     <div
-      v-if="hasPhotoLayer"
+      v-if="hasMediaLayer"
       class="wt-container-block__content"
       :class="{
         'wt-container-block--column-layout': isColumnLayout,
@@ -161,6 +214,14 @@ const overlayStyle = computed<CSSProperties | null>(() => {
 .wt-container-block__bg-overlay {
   position: absolute;
   inset: 0;
+}
+
+.wt-container-block__bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .wt-container-block__content {

@@ -228,8 +228,13 @@ export async function usePublicPage() {
   const host = getRequestHost()
   const path = computed(() => normalizePublicPath(route.path) || '/')
 
+  // Keyed per path: `PublicSitePage` is mounted both by `pages/index.vue`
+  // (via the default layout) and by `pages/[...slug].vue`. On the first
+  // client-side navigation away from "/", the new instance can mount before
+  // the old one's scope disposes — a shared key would make it inherit the
+  // old instance's frozen `path` closure and re-fetch the wrong page.
   const { data, error } = await useAsyncData<PublicPageResponse | null>(
-    `public-page:${host}`,
+    () => `public-page:${host}:${path.value}`,
     () => fetchResolvedPublicPage(host, path.value),
     {
       watch: [path],

@@ -2,6 +2,13 @@ export const BACKGROUND_PHOTO_OPACITY_STYLE = '--builder-background-photo-opacit
 export const BACKGROUND_PHOTO_OVERLAY_COLOR_STYLE = '--builder-background-photo-overlay-color'
 export const BACKGROUND_PHOTO_OVERLAY_OPACITY_STYLE = '--builder-background-photo-overlay-opacity'
 
+// Background VIDEO tokens — the video counterpart to a background photo. The
+// opacity + overlay tokens above are shared: they tint the video layer exactly
+// as they tint a photo. Stored as bare URLs (read in JS) so the <video> element
+// can consume src/poster directly. Mirror of builder/src/lib/background-photo.ts.
+export const BACKGROUND_VIDEO_SRC_STYLE = '--builder-background-video-src'
+export const BACKGROUND_VIDEO_POSTER_STYLE = '--builder-background-video-poster'
+
 export const DEFAULT_BACKGROUND_PHOTO_OPACITY = 100
 export const DEFAULT_BACKGROUND_PHOTO_OVERLAY_COLOR = '#000000'
 export const DEFAULT_BACKGROUND_PHOTO_OVERLAY_OPACITY = 0
@@ -86,6 +93,49 @@ export const getBackgroundPhotoSettings = (
     ),
   }
 }
+
+export interface BackgroundVideoSettings {
+  src: string | null
+  poster: string | null
+}
+
+/**
+ * Reads a bare URL out of a background-video token. Tolerates a stray `url(...)`
+ * wrapper or surrounding quotes, but the canonical storage is a plain URL.
+ * Mirror of builder/src/lib/background-photo.ts → keep in lockstep.
+ */
+const parseVideoUrlToken = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null
+  let trimmed = value.trim()
+  if (!trimmed || trimmed === 'none') return null
+
+  const urlMatch = trimmed.match(/^url\(\s*(['"]?)([^'")]+)\1\s*\)$/i)
+  if (urlMatch) {
+    trimmed = urlMatch[2].trim()
+  } else if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    trimmed = trimmed.slice(1, -1).trim()
+  }
+
+  return trimmed || null
+}
+
+export const getBackgroundVideoSettings = (
+  styles?: Record<string, unknown> | null
+): BackgroundVideoSettings => ({
+  src: parseVideoUrlToken(styles?.[BACKGROUND_VIDEO_SRC_STYLE]),
+  poster: parseVideoUrlToken(styles?.[BACKGROUND_VIDEO_POSTER_STYLE]),
+})
+
+/**
+ * Whether this element carries a background video. Takes precedence over a
+ * photo `backgroundImage` on the same element.
+ */
+export const hasBackgroundVideo = (
+  styles?: Record<string, unknown> | null
+): boolean => Boolean(getBackgroundVideoSettings(styles).src)
 
 /**
  * Whether a `backgroundImage` value references a real photo — i.e. a `url(...)`

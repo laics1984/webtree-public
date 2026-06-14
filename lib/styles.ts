@@ -124,15 +124,12 @@ export function buildCssVars(styles?: PublicStyleTokens | null) {
   const buttonText = getNestedStyleValue(styles, ['buttons', 'text']) || '#ffffff'
   const buttonRadius = toCssLength(styles?.buttons && isStyleRecord(styles.buttons) ? styles.buttons.radius : null, '14px')
   const pageBackground = getNestedStyleValue(styles, ['page', 'background']) || backgroundColor
-  const pageWidthMode = getNestedStyleValue(styles, ['page', 'widthMode']) || getNestedStyleValue(styles, ['page', 'width_mode'])
   // Sections center their content with
   // `padding: max(80px, calc((100% - var(--builder-page-max-width)) / 2))`.
-  // In full-width mode the cap must collapse to the viewport, otherwise the
-  // content column stays pinned at the contained width and "full" only
-  // bleeds backgrounds.
-  const pageMaxWidth = pageWidthMode === 'full'
-    ? '100%'
-    : toCssLength(styles?.page && isStyleRecord(styles.page) ? styles.page.maxWidth : null, '1280px')
+  // Keep this the configured page width in every mode: "full" only bleeds
+  // section backgrounds (via .wt-site max-width: none), while content stays
+  // pinned to the same column as the header/footer.
+  const pageMaxWidth = toCssLength(styles?.page && isStyleRecord(styles.page) ? styles.page.maxWidth : null, '1280px')
 
   return {
     ...DEFAULT_CSS_VARS,

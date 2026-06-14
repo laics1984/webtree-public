@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { hasBackgroundImage, isPhotoSource } from './backgroundPhoto'
+import {
+  BACKGROUND_VIDEO_POSTER_STYLE,
+  BACKGROUND_VIDEO_SRC_STYLE,
+  getBackgroundVideoSettings,
+  hasBackgroundImage,
+  hasBackgroundVideo,
+  isPhotoSource,
+} from './backgroundPhoto'
 
 describe('isPhotoSource', () => {
   it('detects a plain photo url', () => {
@@ -73,5 +80,40 @@ describe('hasBackgroundImage', () => {
     expect(hasBackgroundImage({})).toBe(false)
     expect(hasBackgroundImage(null)).toBe(false)
     expect(hasBackgroundImage({ backgroundImage: 123 })).toBe(false)
+  })
+})
+
+describe('getBackgroundVideoSettings', () => {
+  it('reads a bare src + poster url', () => {
+    expect(
+      getBackgroundVideoSettings({
+        [BACKGROUND_VIDEO_SRC_STYLE]: 'https://x.com/bg.mp4',
+        [BACKGROUND_VIDEO_POSTER_STYLE]: 'https://x.com/poster.jpg',
+      })
+    ).toEqual({ src: 'https://x.com/bg.mp4', poster: 'https://x.com/poster.jpg' })
+  })
+
+  it('tolerates a url() wrapper and surrounding quotes', () => {
+    expect(
+      getBackgroundVideoSettings({
+        [BACKGROUND_VIDEO_SRC_STYLE]: "url('https://x.com/bg.webm')",
+        [BACKGROUND_VIDEO_POSTER_STYLE]: '"https://x.com/p.jpg"',
+      })
+    ).toEqual({ src: 'https://x.com/bg.webm', poster: 'https://x.com/p.jpg' })
+  })
+
+  it('returns null for empty, "none", or non-string values', () => {
+    expect(getBackgroundVideoSettings({ [BACKGROUND_VIDEO_SRC_STYLE]: '' }).src).toBeNull()
+    expect(getBackgroundVideoSettings({ [BACKGROUND_VIDEO_SRC_STYLE]: 'none' }).src).toBeNull()
+    expect(getBackgroundVideoSettings({ [BACKGROUND_VIDEO_SRC_STYLE]: 42 }).src).toBeNull()
+    expect(getBackgroundVideoSettings(null)).toEqual({ src: null, poster: null })
+  })
+})
+
+describe('hasBackgroundVideo', () => {
+  it('is true only when a src token is present', () => {
+    expect(hasBackgroundVideo({ [BACKGROUND_VIDEO_SRC_STYLE]: 'https://x/bg.mp4' })).toBe(true)
+    expect(hasBackgroundVideo({ [BACKGROUND_VIDEO_POSTER_STYLE]: 'https://x/p.jpg' })).toBe(false)
+    expect(hasBackgroundVideo({})).toBe(false)
   })
 })

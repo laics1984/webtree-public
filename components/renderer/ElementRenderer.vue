@@ -22,6 +22,7 @@ const registry: Record<string, any> = {
   text: defineAsyncComponent(() => import('~/components/blocks/TextBlock.vue')),
   section: defineAsyncComponent(() => import('~/components/blocks/SectionBlock.vue')),
   image: defineAsyncComponent(() => import('~/components/blocks/ImageBlock.vue')),
+  video: defineAsyncComponent(() => import('~/components/blocks/VideoBlock.vue')),
   link: defineAsyncComponent(() => import('~/components/blocks/LinkBlock.vue')),
   menu: defineAsyncComponent(() => import('~/components/blocks/MenuBlock.vue')),
   hero: defineAsyncComponent(() => import('~/components/blocks/HeroBlock.vue')),

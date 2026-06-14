@@ -35,4 +35,5 @@ export { useContentListingPage, ContentListingPageOptions, ContentListingPagePay
 export { useDetailPage, DetailPagePayload } from '../composables/useDetailPage';
 export { usePublicPage } from '../composables/usePublicPage';
 export { usePublicSeo } from '../composables/usePublicSeo';
+export { useSchemaMotion } from '../composables/useSchemaMotion';
 export { useNuxtDevTools } from '../node_modules/@nuxt/devtools/dist/runtime/use-nuxt-devtools';

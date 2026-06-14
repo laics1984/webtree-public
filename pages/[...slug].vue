@@ -16,30 +16,47 @@ const route = useRoute()
 const host = getRequestHost()
 const path = computed(() => route.path)
 
+// Keyed per path: each client-side navigation to this catch-all route mounts
+// a fresh `[...slug]` instance (Nuxt's RouteProvider is keyed by `fullPath`).
+// A shared key would make the new instance inherit the previous instance's
+// cached resolution and frozen `path` closure, re-resolving the old path.
 const { data, error } = await useAsyncData(
-  `resolve:${host}`,
+  () => `resolve:${host}:${path.value}`,
   () => fetchPublicResolve(host, path.value),
   { watch: [path], default: () => null }
 )
 
+// `error.value` is the proxy's JSON error envelope: the upstream "notFound"
+// kind is nested at `error.data.data.kind` (the proxy's own response body,
+// itself shaped like `{ statusCode, data: { kind: 'notFound' } }`).
 if (error.value) {
-  throw createError({ statusCode: 502, statusMessage: 'Unable to resolve this URL right now.' })
+  const upstreamKind = (error.value as { data?: { data?: { kind?: string } } }).data?.data?.kind
+
+  // `showError` (not `throw createError`) is required here: a thrown error
+  // during setup of this dynamically-keyed catch-all, on a client-side
+  // navigation, is logged as an unhandled error and leaves the previous
+  // page's content on screen instead of rendering error.vue.
+  if (upstreamKind === 'notFound') {
+    showError(createError({ statusCode: 404, statusMessage: 'Page not found' }))
+  } else {
+    showError(createError({ statusCode: 502, statusMessage: 'Unable to resolve this URL right now.' }))
+  }
 }
 
 const resolution = computed(() => data.value)
 
-if (!resolution.value || resolution.value.kind === 'notFound') {
-  throw createError({ statusCode: 404, statusMessage: 'Page not found' })
+if (!error.value) {
+  if (!resolution.value || resolution.value.kind === 'notFound') {
+    showError(createError({ statusCode: 404, statusMessage: 'Page not found' }))
+  } else if (resolution.value.kind === 'redirect' && resolution.value.redirectTo) {
+    await navigateTo(resolution.value.redirectTo, {
+      redirectCode: resolution.value.status ?? 301,
+      replace: true,
+    })
+  }
 }
 
-if (resolution.value.kind === 'redirect' && resolution.value.redirectTo) {
-  await navigateTo(resolution.value.redirectTo, {
-    redirectCode: resolution.value.status ?? 301,
-    replace: true,
-  })
-}
-
-provide(contentPrefixesKey, resolution.value.prefixes ?? null)
+provide(contentPrefixesKey, resolution.value?.prefixes ?? null)
 
 const isDetail = computed(
   () => resolution.value?.kind === 'article' || resolution.value?.kind === 'event'
