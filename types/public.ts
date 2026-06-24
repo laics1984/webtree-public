@@ -34,8 +34,8 @@ export interface SiteDefaults {
 
 export interface PublicEntityPayload {
   id: string
-  siteKey: string
-  publicIdentifier?: string | null
+  publicIdentifier: string
+  siteKey?: string | null
   name?: string | null
   resolvedHost: string
   canonicalHost?: string | null
@@ -116,8 +116,8 @@ export interface PublicPageResponse extends PublicSiteResponse {
 }
 
 export interface PublicRoutesResponse {
-  siteKey: string
-  publicIdentifier?: string | null
+  publicIdentifier: string
+  siteKey?: string | null
   resolvedHost: string
   canonicalHost?: string | null
   routes: Array<{
@@ -185,7 +185,7 @@ export interface PublicContentItem {
 }
 
 export interface PublicContentItemResponse {
-  entity: { id: string; siteKey?: string | null }
+  entity: { id: string; publicIdentifier: string; siteKey?: string | null }
   item: PublicContentItem
 }
 
@@ -271,7 +271,7 @@ export interface PublicListingContext {
 }
 
 export interface PublicContentListResponse {
-  entity: { id: string; siteKey?: string | null }
+  entity: { id: string; publicIdentifier: string; siteKey?: string | null }
   listingContext?: PublicListingContext
   items: PublicContentItem[]
   total?: number

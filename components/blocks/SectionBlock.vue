@@ -2,9 +2,11 @@
 import type { CSSProperties } from 'vue'
 import type { PublicBlockNode } from '~/types/public'
 import ElementRenderer from '~/components/renderer/ElementRenderer.vue'
+import SectionDivider from '~/components/blocks/SectionDivider.vue'
 import { getNodeClasses, getNodeStyles } from '~/lib/blockRuntime'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
 import { getNodeChildren, getNodeKey } from '~/lib/schema'
+import { getNodeDivider } from '~/lib/sectionDivider'
 import {
   getBackgroundPhotoSettings,
   getBackgroundVideoSettings,
@@ -21,6 +23,7 @@ const children = computed(() => getNodeChildren(props.node))
 const nodeClasses = computed(() => getNodeClasses(props.node))
 const nodeStyles = computed(() => getNodeStyles(props.node))
 const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
+const divider = computed(() => getNodeDivider(props.node))
 
 // Video wins over a photo on the same element (the builder sets one or the
 // other, but suppress the photo defensively if both are present).
@@ -69,7 +72,7 @@ const resolvedStyles = computed<CSSProperties>(() => {
     : { ...nodeStyles.value }
 
   const merged: Record<string, unknown> = { ...base }
-  if (hasMediaLayer.value && !base.position) {
+  if ((hasMediaLayer.value || divider.value) && !base.position) {
     merged.position = 'relative'
   }
   return merged as CSSProperties
@@ -127,6 +130,8 @@ const overlayStyle = computed<CSSProperties | null>(() => {
         :style="overlayStyle"
       />
     </div>
+
+    <SectionDivider v-if="divider" :divider="divider" />
 
     <div v-if="hasMediaLayer" class="wt-section__content">
       <ElementRenderer

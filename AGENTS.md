@@ -31,12 +31,13 @@ Expected stack:
 - Keep rendering deterministic and cache-friendly.
 - Prioritize stability of the rendering contract.
 
-## Site key and host rules
+## Public identifier and host rules
 - Public requests enter by host/hostname.
-- Platform domain format: `{site_key}.webtree-public.my`.
+- Platform domain format: `{public_identifier}.webtree-public.my`.
 - Custom domains may also resolve to the same site.
 - Frontend should not assume raw entity_id.
-- Backend is responsible for resolving `host -> site_key -> entity/site`.
+- Backend is responsible for resolving `host -> public_identifier -> entity/site`.
+- `siteKey` may exist as a legacy/backend field, but public rendering must not use it as the public URL identity.
 - Respect backend-provided canonical URL and canonical host information.
 
 ## SEO rules

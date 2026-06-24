@@ -98,7 +98,7 @@ function normalizePublicPath(path?: string | null): string | null {
   return pathname.startsWith('/') ? pathname : `/${pathname}`
 }
 
-function resolveHomepageFallbackPath(data: PublicRoutesResponse | null | undefined): string | null {
+export function resolveHomepageFallbackPath(data: PublicRoutesResponse | null | undefined): string | null {
   const routes = Array.isArray(data?.routes) ? data.routes : []
 
   const explicitHomepage = routes.find((route) => route.isHomepage || normalizePublicPath(route.path) === '/')
@@ -106,24 +106,24 @@ function resolveHomepageFallbackPath(data: PublicRoutesResponse | null | undefin
     return normalizePublicPath(explicitHomepage.path)
   }
 
-  const fallbackSegments = [data?.siteKey, data?.publicIdentifier].filter(
-    (value): value is string => typeof value === 'string' && value.trim().length > 0
-  )
+  const publicIdentifier = typeof data?.publicIdentifier === 'string'
+    ? data.publicIdentifier.trim()
+    : ''
 
-  if (!fallbackSegments.length) {
+  if (!publicIdentifier) {
     return null
   }
 
-  const fallbackPaths = new Set(fallbackSegments.map((segment) => `/${segment.trim()}`))
+  const fallbackPath = `/${publicIdentifier}`
 
   for (const route of routes) {
     const routePath = normalizePublicPath(route.path)
-    if (routePath && fallbackPaths.has(routePath)) {
+    if (routePath === fallbackPath) {
       return routePath
     }
 
     const slug = typeof route.slug === 'string' ? route.slug.trim() : ''
-    if (slug && fallbackSegments.includes(slug)) {
+    if (slug === publicIdentifier) {
       return routePath
     }
   }
@@ -246,11 +246,11 @@ export async function usePublicPage() {
     throw resolvePageError(error.value, host, config.public.apiBase)
   }
 
-  if (!data.value?.entity || !data.value?.site || !data.value?.page) {
+  if (!data.value?.entity?.publicIdentifier || !data.value?.site || !data.value?.page) {
     if (import.meta.dev) {
       throw createError({
         statusCode: 404,
-        statusMessage: `Page payload missing for host "${host}" and path "${path.value}". API base: ${config.public.apiBase}.`
+        statusMessage: `Page payload missing required public identifier for host "${host}" and path "${path.value}". API base: ${config.public.apiBase}.`
       })
     }
 

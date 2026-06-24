@@ -137,10 +137,33 @@ export const hasBackgroundVideo = (
   styles?: Record<string, unknown> | null
 ): boolean => Boolean(getBackgroundVideoSettings(styles).src)
 
+const FRAGMENT_REF_REGEX = /^(#|%23)/i
+// Decorative inline textures (grain/noise/mesh) are always authored as SVG —
+// raster data-URIs (png/jpeg/webp/gif) are how a locally-uploaded photo is
+// stored when CMS upload is disabled/unavailable, and must count as a photo.
+const DECORATIVE_DATA_URI_REGEX = /^data:image\/svg\+xml/i
+
+/**
+ * Whether a bare URL (the contents of a `url(...)`, without the wrapper) is a
+ * real photo source — as opposed to an SVG fragment reference (#id / %23id,
+ * e.g. the `url(#n)` filter ref *inside* a grain data-URI) or a decorative
+ * inline SVG data-URI (grain/noise/mesh textures).
+ *
+ * Mirror of builder/src/lib/background-photo.ts → keep in lockstep.
+ */
+export const isPhotoUrlMatch = (inner: string): boolean => {
+  const trimmed = inner.trim()
+  if (!trimmed) return false
+  if (FRAGMENT_REF_REGEX.test(trimmed)) return false
+  if (DECORATIVE_DATA_URI_REGEX.test(trimmed)) return false
+  return true
+}
+
 /**
  * Whether a `backgroundImage` value references a real photo — i.e. a `url(...)`
- * pointing at a remote/local image file — as opposed to a pure CSS gradient
- * (mesh/aurora backgrounds) or an inline data-URI (e.g. SVG grain/noise).
+ * pointing at a remote/local image file or an uploaded raster data-URI — as
+ * opposed to a pure CSS gradient (mesh/aurora backgrounds) or a decorative
+ * inline SVG data-URI (grain/noise).
  *
  * Only real photos should go through the photo-layer pipeline (separate
  * absolutely-positioned layer + opacity + dark overlay). Decorative gradients
@@ -148,7 +171,7 @@ export const hasBackgroundVideo = (
  *
  * Note: a value may legitimately combine BOTH — the generator emits
  * `linear-gradient(overlay), url('photo')` for brand-tinted hero photos. Such
- * a value still counts as a photo because it contains a real (non-data) url().
+ * a value still counts as a photo because it contains a real (non-decorative) url().
  */
 export const isPhotoSource = (value: string): boolean => {
   const v = value.trim()
@@ -156,10 +179,7 @@ export const isPhotoSource = (value: string): boolean => {
   // Collect every url(...) reference. A bare gradient has none → not a photo.
   const urls = v.match(/url\(\s*['"]?\s*[^'")]+/gi)
   if (!urls) return false
-  // A real photo url() is neither a data: URI (inline grain/noise SVGs) nor an
-  // SVG fragment reference (#id / %23id — e.g. the `url(#n)` filter ref *inside*
-  // a grain data-URI). It's a photo only if some url() is a genuine source.
-  return urls.some((u) => !/url\(\s*['"]?\s*(data:|#|%23)/i.test(u))
+  return urls.some((u) => isPhotoUrlMatch(u.replace(/^url\(\s*['"]?\s*/i, '')))
 }
 
 export const hasBackgroundImage = (styles?: Record<string, unknown> | null) => {

@@ -59,7 +59,10 @@ const pageWidthMode = computed(() => {
   return page.widthMode === 'full' ? 'full' : 'contained'
 })
 const runtimeHeaderSchema = computed(() => props.site?.headerSchema)
-const runtimeHeaderOverlay = computed(() => {
+
+// Static, site-wide opt-in (escape hatch — currently always false from the
+// generator). Kept so a future backend flag can still force overlay on.
+const staticHeaderOverlay = computed(() => {
   const headerSchema = props.site?.headerSchema
 
   if (!headerSchema || typeof headerSchema !== 'object' || Array.isArray(headerSchema)) {
@@ -75,6 +78,44 @@ const runtimeHeaderOverlay = computed(() => {
     behavior.overlay === true
     )
 })
+
+// Per-page signal: does THIS page's first real section (skipping a leading
+// breadcrumb on sub-pages) carry the full-bleed background-hero signature
+// emitted by schema_builder.py's _build_hero_background? No new backend field
+// needed — the signature is already present in bodySchema.
+const heroIsBackgroundLayout = computed(() => {
+  const nodes = normalizeSchemaNodes(props.bodySchema as any)
+  const first = nodes.find((node) => (node as Record<string, unknown>)?.name !== 'Breadcrumb')
+  if (!first) return false
+  if ((first as Record<string, unknown>)?.name !== 'Hero') return false
+  const styles = getNodeStyles(first)
+  const minHeight = styles.minHeight
+  const backgroundImage = styles.backgroundImage
+  return (
+    typeof minHeight === 'string' &&
+    minHeight.includes('--builder-hero-min-height') &&
+    typeof backgroundImage === 'string' &&
+    backgroundImage.includes('linear-gradient')
+  )
+})
+
+// Scroll-aware: the header starts transparent over a full-bleed hero and
+// resolves to the normal solid/sticky bar once the user scrolls past it.
+const isScrolled = ref(false)
+function handleHeaderScroll() {
+  isScrolled.value = window.scrollY > 80
+}
+onMounted(() => {
+  window.addEventListener('scroll', handleHeaderScroll, { passive: true })
+  handleHeaderScroll()
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleHeaderScroll)
+})
+
+const runtimeHeaderOverlay = computed(
+  () => (staticHeaderOverlay.value || heroIsBackgroundLayout.value) && !isScrolled.value
+)
 const runtimeHeaderPosition = computed(() => {
   const headerSchema = props.site?.headerSchema
 
@@ -159,7 +200,7 @@ if (import.meta.server) {
   <div
     class="wt-site"
     :style="cssVars"
-    :data-site-key="entity?.siteKey || ''"
+    :data-public-identifier="entity?.publicIdentifier || ''"
     :data-page-width-mode="pageWidthMode"
   >
     <header
@@ -168,8 +209,9 @@ if (import.meta.server) {
       :class="{
         'wt-page-header--sticky': runtimeHeaderPosition === 'sticky' && !runtimeHeaderOverlay,
         'wt-page-header--overlay': runtimeHeaderOverlay,
+        'wt-page-header--solid': !runtimeHeaderOverlay,
       }"
-      :style="headerWrapperStyle"
+      :style="runtimeHeaderOverlay ? undefined : headerWrapperStyle"
     >
       <SchemaRenderer :schema="site?.headerSchema" scope="header" />
     </header>
@@ -216,6 +258,10 @@ body {
   flex-shrink: 0;
 }
 
+.wt-page-header {
+  transition: background-color 200ms ease, border-color 200ms ease, backdrop-filter 200ms ease;
+}
+
 .wt-page-header--sticky {
   position: sticky;
   top: 0;
@@ -228,6 +274,15 @@ body {
   right: 0;
   left: 0;
   z-index: 30;
+  background: transparent;
+  border-bottom-color: transparent;
+  backdrop-filter: none;
+}
+
+.wt-page-header--solid {
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .wt-main {

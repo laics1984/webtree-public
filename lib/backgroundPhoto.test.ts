@@ -61,6 +61,14 @@ describe('isPhotoSource', () => {
     ).toBe(false)
   })
 
+  it('detects an uploaded photo stored as a raster data-URI', () => {
+    // Local-only uploads (CMS upload disabled/unavailable) fall back to
+    // FileReader data-URIs — these are real photos, not decorative textures.
+    expect(isPhotoSource('url("data:image/png;base64,iVBORw0KGgo=")')).toBe(true)
+    expect(isPhotoSource('url("data:image/jpeg;base64,/9j/4AAQ=")')).toBe(true)
+    expect(isPhotoSource('url("data:image/webp;base64,UklGRg==")')).toBe(true)
+  })
+
   it('ignores "none" and empty values', () => {
     expect(isPhotoSource('none')).toBe(false)
     expect(isPhotoSource('   ')).toBe(false)

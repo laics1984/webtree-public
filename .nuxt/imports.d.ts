@@ -33,7 +33,7 @@ export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
 export { useArticleListingPage, ArticleListingPageOptions, ArticleListingPagePayload } from '../composables/useArticleListingPage';
 export { useContentListingPage, ContentListingPageOptions, ContentListingPagePayload } from '../composables/useContentListingPage';
 export { useDetailPage, DetailPagePayload } from '../composables/useDetailPage';
-export { usePublicPage } from '../composables/usePublicPage';
+export { resolveHomepageFallbackPath, usePublicPage } from '../composables/usePublicPage';
 export { usePublicSeo } from '../composables/usePublicSeo';
 export { useSchemaMotion } from '../composables/useSchemaMotion';
 export { useNuxtDevTools } from '../node_modules/@nuxt/devtools/dist/runtime/use-nuxt-devtools';

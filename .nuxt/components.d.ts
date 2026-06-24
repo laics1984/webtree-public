@@ -24,6 +24,7 @@ export const BlocksImageBlock: typeof import("../components/blocks/ImageBlock.vu
 export const BlocksLinkBlock: typeof import("../components/blocks/LinkBlock.vue")['default']
 export const BlocksMenuBlock: typeof import("../components/blocks/MenuBlock.vue")['default']
 export const BlocksSectionBlock: typeof import("../components/blocks/SectionBlock.vue")['default']
+export const BlocksSectionDivider: typeof import("../components/blocks/SectionDivider.vue")['default']
 export const BlocksTextBlock: typeof import("../components/blocks/TextBlock.vue")['default']
 export const BlocksVideoBlock: typeof import("../components/blocks/VideoBlock.vue")['default']
 export const PublicContentDetail: typeof import("../components/public/ContentDetail.vue")['default']
@@ -65,6 +66,7 @@ export const LazyBlocksImageBlock: LazyComponent<typeof import("../components/bl
 export const LazyBlocksLinkBlock: LazyComponent<typeof import("../components/blocks/LinkBlock.vue")['default']>
 export const LazyBlocksMenuBlock: LazyComponent<typeof import("../components/blocks/MenuBlock.vue")['default']>
 export const LazyBlocksSectionBlock: LazyComponent<typeof import("../components/blocks/SectionBlock.vue")['default']>
+export const LazyBlocksSectionDivider: LazyComponent<typeof import("../components/blocks/SectionDivider.vue")['default']>
 export const LazyBlocksTextBlock: LazyComponent<typeof import("../components/blocks/TextBlock.vue")['default']>
 export const LazyBlocksVideoBlock: LazyComponent<typeof import("../components/blocks/VideoBlock.vue")['default']>
 export const LazyPublicContentDetail: LazyComponent<typeof import("../components/public/ContentDetail.vue")['default']>
