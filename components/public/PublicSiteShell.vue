@@ -1,9 +1,21 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue'
 import SchemaRenderer from '~/components/renderer/SchemaRenderer.vue'
-import { getNodeStyles, runtimeHeaderOverlayKey, runtimeHeaderSchemaKey, runtimeMenusKey } from '~/lib/blockRuntime'
+import {
+  getNodeStyles,
+  runtimeBuilderStylesKey,
+  runtimeHeaderOverlayKey,
+  runtimeHeaderSchemaKey,
+  runtimeHeaderShrinkKey,
+  runtimeMenusKey,
+} from '~/lib/blockRuntime'
 import { buildResponsiveStylesheet } from '~/lib/responsiveRuntime'
-import { normalizeSchemaNodes } from '~/lib/schema'
+import {
+  findFirstNonBreadcrumbNode,
+  getNodeName,
+  isHeroSectionName,
+  normalizeSchemaNodes,
+} from '~/lib/schema'
 import { buildCssVars } from '~/lib/styles'
 import { mergeVaryHeader } from '~/lib/host'
 import type {
@@ -47,6 +59,7 @@ function pickRootBackgroundStyles(schema: unknown): CSSProperties | undefined {
 }
 
 const cssVars = computed(() => buildCssVars(props.site?.builderStyles))
+const runtimeBuilderStyles = computed(() => props.site?.builderStyles)
 const runtimeMenus = computed(() => props.site?.menus ?? [])
 const pageWidthMode = computed(() => {
   const styles = props.site?.builderStyles
@@ -85,7 +98,7 @@ const staticHeaderOverlay = computed(() => {
 // needed — the signature is already present in bodySchema.
 const heroIsBackgroundLayout = computed(() => {
   const nodes = normalizeSchemaNodes(props.bodySchema as any)
-  const first = nodes.find((node) => (node as Record<string, unknown>)?.name !== 'Breadcrumb')
+  const first = findFirstNonBreadcrumbNode(nodes)?.node
   if (!first) return false
   if ((first as Record<string, unknown>)?.name !== 'Hero') return false
   const styles = getNodeStyles(first)
@@ -99,11 +112,98 @@ const heroIsBackgroundLayout = computed(() => {
   )
 })
 
+// Reveal-on-scroll config (mirrors builder HeaderBehavior). Default ON at 80px so
+// older headers (and background-hero pages) keep the standard behavior. Read
+// defensively, same as staticHeaderOverlay / runtimeHeaderPosition above.
+const DEFAULT_HEADER_SCROLL_REVEAL_OFFSET_PX = 80
+const HEADER_SCROLL_REVEAL_OFFSET_MIN_PX = 0
+const HEADER_SCROLL_REVEAL_OFFSET_MAX_PX = 600
+
+function readHeaderBehavior(): Record<string, unknown> | null {
+  const headerSchema = props.site?.headerSchema
+  if (!headerSchema || typeof headerSchema !== 'object' || Array.isArray(headerSchema)) {
+    return null
+  }
+  const behavior = 'behavior' in headerSchema ? headerSchema.behavior : null
+  return behavior && typeof behavior === 'object' && !Array.isArray(behavior)
+    ? (behavior as Record<string, unknown>)
+    : null
+}
+
+const headerRevealOnScroll = computed(() => {
+  const behavior = readHeaderBehavior()
+  // Only an explicit `false` disables the reveal; missing field stays ON.
+  return behavior?.revealBackgroundOnScroll !== false
+})
+
+const headerRevealOffset = computed(() => {
+  const raw = readHeaderBehavior()?.scrollRevealOffset
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+    return DEFAULT_HEADER_SCROLL_REVEAL_OFFSET_PX
+  }
+  return Math.min(
+    HEADER_SCROLL_REVEAL_OFFSET_MAX_PX,
+    Math.max(HEADER_SCROLL_REVEAL_OFFSET_MIN_PX, Math.round(raw))
+  )
+})
+
+// Shrink-on-scroll config (mirrors builder HeaderBehavior). Off by default —
+// unlike reveal, this has no pre-existing behavior to preserve.
+const DEFAULT_HEADER_SHRINK_OFFSET_PX = 80
+const HEADER_SHRINK_OFFSET_MIN_PX = 0
+const HEADER_SHRINK_OFFSET_MAX_PX = 600
+const HEADER_SHRINK_AMOUNT_MIN_PERCENT = 50
+const HEADER_SHRINK_AMOUNT_MAX_PERCENT = 100
+const DEFAULT_HEADER_SHRINK_AMOUNT_PERCENT = 80
+
+const headerShrinkOnScroll = computed(() => readHeaderBehavior()?.shrinkOnScroll === true)
+
+const headerShrinkOffset = computed(() => {
+  // Overlay headers share the reveal trigger — one scroll moment, two effects.
+  if (staticHeaderOverlay.value || heroIsBackgroundLayout.value) {
+    return headerRevealOffset.value
+  }
+  const raw = readHeaderBehavior()?.scrollShrinkOffset
+  if (typeof raw !== 'number' || !Number.isFinite(raw)) {
+    return DEFAULT_HEADER_SHRINK_OFFSET_PX
+  }
+  return Math.min(
+    HEADER_SHRINK_OFFSET_MAX_PX,
+    Math.max(HEADER_SHRINK_OFFSET_MIN_PX, Math.round(raw))
+  )
+})
+
+const headerShrinkRatio = computed(() => {
+  const raw = readHeaderBehavior()?.shrinkAmount
+  const amount =
+    typeof raw === 'number' && Number.isFinite(raw)
+      ? Math.min(
+          HEADER_SHRINK_AMOUNT_MAX_PERCENT,
+          Math.max(HEADER_SHRINK_AMOUNT_MIN_PERCENT, Math.round(raw))
+        )
+      : DEFAULT_HEADER_SHRINK_AMOUNT_PERCENT
+  return amount / 100
+})
+
 // Scroll-aware: the header starts transparent over a full-bleed hero and
-// resolves to the normal solid/sticky bar once the user scrolls past it.
+// resolves to the normal solid/sticky bar once the user scrolls past the
+// configured offset; shrinks its logo/padding past its own (possibly shared)
+// offset. One listener drives both — each ref only updates (and re-renders)
+// when its own threshold actually flips, same as before.
 const isScrolled = ref(false)
+const isShrunk = ref(false)
 function handleHeaderScroll() {
-  isScrolled.value = window.scrollY > 80
+  const scrollY = window.scrollY
+
+  const nextScrolled = scrollY > headerRevealOffset.value
+  if (nextScrolled !== isScrolled.value) {
+    isScrolled.value = nextScrolled
+  }
+
+  const nextShrunk = headerShrinkOnScroll.value && scrollY > headerShrinkOffset.value
+  if (nextShrunk !== isShrunk.value) {
+    isShrunk.value = nextShrunk
+  }
 }
 onMounted(() => {
   window.addEventListener('scroll', handleHeaderScroll, { passive: true })
@@ -113,9 +213,22 @@ onUnmounted(() => {
   window.removeEventListener('scroll', handleHeaderScroll)
 })
 
-const runtimeHeaderOverlay = computed(
-  () => (staticHeaderOverlay.value || heroIsBackgroundLayout.value) && !isScrolled.value
-)
+const runtimeHeaderShrink = computed(() => ({
+  active: isShrunk.value,
+  ratio: headerShrinkRatio.value,
+}))
+
+const runtimeHeaderOverlay = computed(() => {
+  const wantsOverlay = staticHeaderOverlay.value || heroIsBackgroundLayout.value
+  if (!wantsOverlay) {
+    return false
+  }
+  // Reveal disabled → stay transparent regardless of scroll position.
+  if (!headerRevealOnScroll.value) {
+    return true
+  }
+  return !isScrolled.value
+})
 const runtimeHeaderPosition = computed(() => {
   const headerSchema = props.site?.headerSchema
 
@@ -138,6 +251,50 @@ const runtimeHeaderPosition = computed(() => {
 })
 const headerWrapperStyle = computed(() => pickRootBackgroundStyles(props.site?.headerSchema))
 const footerWrapperStyle = computed(() => pickRootBackgroundStyles(props.site?.footerSchema))
+
+// Mirror of builder/src/components/tabs/editor-components/Editor.tsx's
+// `shouldSpaceFirstSectionForOverlay` / `headerRootMinHeight` /
+// `HEADER_OVERLAY_SPACER_BUFFER_PX`. An overlay header floats transparently
+// over the first section instead of pushing it down, so when that first
+// section is a Hero, push its content down by the header's own height (plus
+// breathing room) so the hero's heading isn't hidden behind the header.
+const HEADER_OVERLAY_SPACER_BUFFER_PX = 32
+const HEADER_OVERLAY_SPACER_FALLBACK_MIN_HEIGHT = '96px'
+
+const headerRootMinHeight = computed(() => {
+  const [headerRoot] = normalizeSchemaNodes(props.site?.headerSchema as any)
+  const minHeight = headerRoot ? getNodeStyles(headerRoot).minHeight : undefined
+  return typeof minHeight === 'string' && minHeight.trim().length > 0
+    ? minHeight
+    : HEADER_OVERLAY_SPACER_FALLBACK_MIN_HEIGHT
+})
+
+const firstBodySectionIsHero = computed(() => {
+  const nodes = normalizeSchemaNodes(props.bodySchema as any)
+  const first = findFirstNonBreadcrumbNode(nodes)?.node
+  return Boolean(first && isHeroSectionName(getNodeName(first)))
+})
+
+const shouldSpaceFirstSectionForOverlay = computed(
+  () => runtimeHeaderOverlay.value && firstBodySectionIsHero.value
+)
+
+const headerOverlaySpacerPaddingTop = computed(() =>
+  shouldSpaceFirstSectionForOverlay.value
+    ? `calc(${headerRootMinHeight.value} + ${HEADER_OVERLAY_SPACER_BUFFER_PX}px)`
+    : undefined
+)
+
+// The site-wide "Hero height" default (full screen vs banded) — needed by
+// SchemaRenderer to tell a real full-screen hero apart from one that merely
+// falls back to the site default var. Keep in lockstep with builder
+// src/lib/builder-styles.ts's `BuilderStyles.hero.minHeight`.
+const globalHeroMinHeight = computed(() => {
+  const styles = props.site?.builderStyles
+  const hero = styles && typeof styles === 'object' && !Array.isArray(styles) ? styles.hero : null
+  const minHeight = hero && typeof hero === 'object' && !Array.isArray(hero) ? hero.minHeight : null
+  return typeof minHeight === 'string' && minHeight.trim().length > 0 ? minHeight : undefined
+})
 const responsiveCss = computed(() =>
   buildResponsiveStylesheet({
     headerSchema: props.site?.headerSchema,
@@ -149,6 +306,8 @@ const responsiveCss = computed(() =>
 provide(runtimeMenusKey, runtimeMenus)
 provide(runtimeHeaderSchemaKey, runtimeHeaderSchema)
 provide(runtimeHeaderOverlayKey, runtimeHeaderOverlay)
+provide(runtimeHeaderShrinkKey, runtimeHeaderShrink)
+provide(runtimeBuilderStylesKey, runtimeBuilderStyles)
 
 // Entrance/scroll motion declared on schema nodes (`motion` annotations from
 // the section catalog / builder). Client-only; SSR markup is never hidden.
@@ -209,6 +368,7 @@ if (import.meta.server) {
       :class="{
         'wt-page-header--sticky': runtimeHeaderPosition === 'sticky' && !runtimeHeaderOverlay,
         'wt-page-header--overlay': runtimeHeaderOverlay,
+        'wt-page-header--overlay-sticky': runtimeHeaderOverlay && runtimeHeaderPosition === 'sticky',
         'wt-page-header--solid': !runtimeHeaderOverlay,
       }"
       :style="runtimeHeaderOverlay ? undefined : headerWrapperStyle"
@@ -216,7 +376,10 @@ if (import.meta.server) {
       <SchemaRenderer :schema="site?.headerSchema" scope="header" />
     </header>
     <main class="wt-main">
-      <slot />
+      <slot
+        :header-overlay-spacer-padding-top="headerOverlaySpacerPaddingTop"
+        :global-hero-min-height="globalHeroMinHeight"
+      />
     </main>
     <footer v-if="site?.footerSchema" class="wt-page-footer" :style="footerWrapperStyle">
       <SchemaRenderer :schema="site?.footerSchema" scope="footer" />
@@ -277,6 +440,16 @@ body {
   background: transparent;
   border-bottom-color: transparent;
   backdrop-filter: none;
+}
+
+/* Sticky + overlay combined: pin the transparent header instead of letting
+   it scroll away with the hero before the solid/sticky phase takes over.
+   `position: sticky` would still reserve its own box in flow and never
+   actually overlap anything — `fixed` removes it from flow *and* pins it to
+   the viewport (no scale-transform wrapper here to break that, unlike the
+   builder canvas). */
+.wt-page-header--overlay-sticky {
+  position: fixed;
 }
 
 .wt-page-header--solid {

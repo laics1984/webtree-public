@@ -44,6 +44,13 @@ useHead({
 
 <template>
   <PublicSiteShell :entity="entity" :site="site" :body-schema="template.bodySchema">
-    <SchemaRenderer :schema="template.bodySchema" :scope="scope" />
+    <template #default="{ headerOverlaySpacerPaddingTop, globalHeroMinHeight }">
+      <SchemaRenderer
+        :schema="template.bodySchema"
+        :scope="scope"
+        :overlay-spacer-padding-top="headerOverlaySpacerPaddingTop"
+        :global-hero-min-height="globalHeroMinHeight"
+      />
+    </template>
   </PublicSiteShell>
 </template>

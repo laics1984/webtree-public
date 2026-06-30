@@ -20,6 +20,7 @@
  *    actually uses such a preset; the default css tier ships zero deps.
  */
 import { getNodeField } from '~/lib/blockRuntime'
+import { getNodeBackgroundTexture } from '~/lib/backgroundTexture'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
 import { getNodeChildren, normalizeSchemaNodes } from '~/lib/schema'
 
@@ -132,9 +133,22 @@ export function collectMotionTargets(schemas: unknown[]): MotionTarget[] {
 
   const visit = (node: unknown) => {
     const motion = getNodeMotion(node)
-    if (motion && PRESETS[motion.preset]) {
-      const nodeId = getNodeDomId(node as Record<string, unknown>)
-      if (nodeId) targets.push({ nodeId, motion })
+    const preset = motion ? PRESETS[motion.preset] : undefined
+    if (motion && preset) {
+      // A webgl backdrop (aurora/silk) paints an animated brand gradient over
+      // the section's surface. If the user has explicitly flattened that
+      // surface via a `backgroundTexture` override (e.g. "Flat" on the gradient
+      // CTA), suppress the backdrop so the published section stays solid —
+      // matching the builder, which never renders the webgl tier in the editor.
+      // Sections that keep the theme default (no override, e.g. hero-minimal's
+      // aurora) are untouched.
+      const flattened =
+        preset.tier === 'webgl' &&
+        getNodeBackgroundTexture(node as Record<string, unknown>) !== undefined
+      if (!flattened) {
+        const nodeId = getNodeDomId(node as Record<string, unknown>)
+        if (nodeId) targets.push({ nodeId, motion })
+      }
     }
     for (const child of getNodeChildren(node as never)) visit(child)
   }

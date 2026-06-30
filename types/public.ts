@@ -1,6 +1,13 @@
 export type JsonPrimitive = string | number | boolean | null
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
 
+// The 4 decorative-background strategies (site-generator's
+// ThemeTokens.background_strategy / BuilderElement.backgroundTexture). A leaf
+// type with no dependents of its own — both lib/backgroundTexture.ts and
+// lib/sectionDivider.ts depend on it, mirroring builder/src/lib/builder-styles.ts's
+// role as the independent leaf for the same type.
+export type BackgroundStrategy = 'flat' | 'mesh' | 'grain' | 'mesh+grain'
+
 export interface PublicStyleTokens {
   [key: string]: JsonPrimitive | JsonPrimitive[] | PublicStyleTokens | undefined
 }

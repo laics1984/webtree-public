@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { getBooleanField, getNodeClasses, getNodeStyles, getStringField } from '~/lib/blockRuntime'
+import { getBooleanField, getNodeClasses, getNodeStyles, getStringField, runtimeHeaderShrinkKey } from '~/lib/blockRuntime'
+import { getShrunkLogoStyles } from '~/lib/headerShrink'
 import { getImageElementStyles, getImageWrapperStyles } from '~/lib/imageStyles'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
+import { getNodeName } from '~/lib/schema'
 
 const props = defineProps<{ node: Record<string, any> }>()
 const src = computed(() => getStringField(props.node, 'src', 'imageUrl'))
@@ -13,9 +15,29 @@ const isHero = computed(() => getBooleanField(props.node, 'priority') || getStri
 const nodeClasses = computed(() => getNodeClasses(props.node))
 const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
 
+// Mirrors builder's `isBrandHeaderElement` exact-match (not a loose regex) —
+// only the header's own brand/logo node shrinks, never an unrelated body
+// image that happens to share the name.
+const isBrandLogo = computed(() => {
+  const name = getNodeName(props.node)
+  return name === 'Brand' || name === 'Brand Logo'
+})
+const runtimeHeaderShrink = inject(
+  runtimeHeaderShrinkKey,
+  computed(() => ({ active: false, ratio: 1 }))
+)
+const isLogoShrinkActive = computed(() => isBrandLogo.value && runtimeHeaderShrink.value.active)
+
 const nodeStyles = computed(() => {
   const styles = getNodeStyles(props.node)
-  return getImageWrapperStyles(styles, nodeClasses.value)
+  const wrapperStyles = getImageWrapperStyles(styles, nodeClasses.value)
+  if (!isLogoShrinkActive.value) {
+    return wrapperStyles
+  }
+  const shrunk = getShrunkLogoStyles(styles, runtimeHeaderShrink.value.ratio)
+  return shrunk
+    ? { ...wrapperStyles, ...shrunk, transition: 'width 200ms ease, height 200ms ease' }
+    : wrapperStyles
 })
 
 // Styling that must live on the <img> element itself.

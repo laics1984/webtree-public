@@ -74,6 +74,37 @@ export async function fetchPublicContentItem(
   })
 }
 
+export interface PublicContactPayload {
+  first_name?: string
+  last_name?: string
+  email: string
+  phone?: string
+  company?: string
+  subject?: string
+  message: string
+  page_url?: string
+  marketing_opt_in?: boolean
+  website?: string // honeypot — must stay empty
+  meta?: Record<string, unknown>
+}
+
+export interface PublicContactResponse {
+  success: boolean
+  message?: string
+}
+
+export async function submitPublicContact(
+  host: string,
+  payload: PublicContactPayload,
+  apiBase?: string | null
+) {
+  const base = resolveApiBase(apiBase)
+  return await $fetch<PublicContactResponse>(`${base}/contact`, {
+    method: 'POST',
+    body: { ...payload, host },
+  })
+}
+
 export async function fetchPublicContentList(
   host: string,
   type: PublicContentItemType,

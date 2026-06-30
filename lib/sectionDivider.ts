@@ -5,7 +5,7 @@
 // divider is a decorative SVG overlay pinned to a section's edge and renders
 // over any background (solid, gradient, photo, or video).
 
-import type { PublicBlockNode } from '~/types/public'
+import type { BackgroundStrategy, PublicBlockNode } from '~/types/public'
 import { getNodeField } from '~/lib/blockRuntime'
 
 export type SectionDividerShape = 'slant' | 'curve' | 'wave' | 'peak'
@@ -16,6 +16,13 @@ export interface SectionDividerEdge {
   height?: number
   color?: string
   flipX?: boolean
+  /**
+   * Decorative texture to layer on top of `color`, matching the grain/mesh of
+   * the section the edge reveals — so a shaped seam reads as a continuous
+   * handoff instead of a flat cut into a textured background. Mirror of
+   * builder/src/lib/section-divider.ts's `SectionDividerEdge.texture`.
+   */
+  texture?: BackgroundStrategy
 }
 
 export interface SectionDivider {
@@ -77,11 +84,16 @@ const normalizeEdge = (value: unknown): SectionDividerEdge | null => {
   const edge = value as Record<string, unknown>
   const shape = edge.shape
   if (!getDividerShapeDef(typeof shape === 'string' ? shape : null)) return null
+  const texture = edge.texture
   return {
     shape: shape as SectionDividerShape,
     height: typeof edge.height === 'number' ? edge.height : undefined,
     color: typeof edge.color === 'string' ? edge.color : undefined,
     flipX: typeof edge.flipX === 'boolean' ? edge.flipX : undefined,
+    texture:
+      texture === 'mesh' || texture === 'grain' || texture === 'mesh+grain' || texture === 'flat'
+        ? texture
+        : undefined,
   }
 }
 

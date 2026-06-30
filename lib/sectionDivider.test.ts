@@ -30,6 +30,17 @@ describe('getNodeDivider', () => {
     expect(divider?.top).toBeNull()
     expect(hasNodeDivider({ divider: { bottom: { shape: 'wave' } } })).toBe(true)
   })
+
+  it('normalizes a known texture value and drops an unknown one', () => {
+    const divider = getNodeDivider({
+      divider: {
+        top: { shape: 'curve', texture: 'mesh+grain' },
+        bottom: { shape: 'slant', texture: 'sparkles' },
+      },
+    })
+    expect(divider?.top?.texture).toBe('mesh+grain')
+    expect(divider?.bottom?.texture).toBeUndefined()
+  })
 })
 
 describe('edge resolution', () => {

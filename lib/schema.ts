@@ -94,6 +94,29 @@ export function getNodeKey(node: PublicBlockNode, index: number): string {
   return `${String(key)}:${index}`
 }
 
+export function getNodeName(node: PublicBlockNode | Record<string, unknown> | null | undefined): string {
+  const name = (node as Record<string, unknown> | null | undefined)?.name
+  return typeof name === 'string' ? name : ''
+}
+
+// Mirror of builder/src/lib/hero-typography.ts's `isHeroSectionName` — section
+// names vary ("Hero", "Hero - Background", "Hero Columns", ...), so match the
+// "Hero" prefix rather than an exact name.
+export function isHeroSectionName(name: string): boolean {
+  return /^hero\b/i.test(name.trim())
+}
+
+// Sub-pages prepend a leading 'Breadcrumb' section ahead of the page's first
+// real section. Shared by PublicSiteShell's hero-layout detection and
+// SchemaRenderer's overlay-header spacer so both agree on which node is
+// "first" for their respective purposes.
+export function findFirstNonBreadcrumbNode(
+  nodes: PublicBlockNode[]
+): { node: PublicBlockNode; index: number } | null {
+  const index = nodes.findIndex((node) => getNodeName(node) !== 'Breadcrumb')
+  return index === -1 ? null : { node: nodes[index], index }
+}
+
 export function normalizeBlockType(type?: string | null): string {
   return (type || '')
     .trim()
