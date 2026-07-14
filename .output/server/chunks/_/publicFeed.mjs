@@ -1,4 +1,5 @@
 import { u as useRuntimeConfig } from '../nitro/nitro.mjs';
+import { n as normalizeHost, i as isLocalPlatformRequestHost, p as preferRequestHost } from './host.mjs';
 
 function resolveApiBase(apiBase) {
   const config = useRuntimeConfig();
@@ -15,104 +16,6 @@ async function fetchPublicRoutes(host, apiBase) {
   return await $fetch(`${base}/routes`, {
     params: { host }
   });
-}
-
-function firstForwardedValue(value) {
-  var _a;
-  return ((_a = (value || "").split(",")[0]) == null ? void 0 : _a.trim()) || "";
-}
-function stripOriginDecorators(value) {
-  const candidate = value.trim();
-  if (!candidate) {
-    return "";
-  }
-  if (candidate.includes("://")) {
-    try {
-      return new URL(candidate).host;
-    } catch {
-      return "";
-    }
-  }
-  return candidate.replace(/[/?#].*$/, "");
-}
-function parseHost(value) {
-  const candidate = stripOriginDecorators(firstForwardedValue(value)).toLowerCase().replace(/^\.+|\.+$/g, "");
-  if (!candidate) {
-    return {
-      host: "",
-      hostname: "",
-      port: ""
-    };
-  }
-  if (candidate.startsWith("[")) {
-    const closingBracket = candidate.indexOf("]");
-    const hostname2 = closingBracket >= 0 ? candidate.slice(0, closingBracket + 1) : candidate;
-    const remainder = closingBracket >= 0 ? candidate.slice(closingBracket + 1) : "";
-    const port2 = remainder.startsWith(":") ? remainder.slice(1).replace(/[^\d].*$/, "") : "";
-    return {
-      host: port2 ? `${hostname2}:${port2}` : hostname2,
-      hostname: hostname2,
-      port: port2
-    };
-  }
-  const portMatch = candidate.match(/^(.*?)(?::(\d+))?$/);
-  const hostname = ((portMatch == null ? void 0 : portMatch[1]) || candidate).replace(/^\.+|\.+$/g, "");
-  const port = (portMatch == null ? void 0 : portMatch[2]) || "";
-  return {
-    host: hostname ? port ? `${hostname}:${port}` : hostname : "",
-    hostname,
-    port
-  };
-}
-function isLocalHostname(hostname) {
-  return hostname === "localhost" || hostname.endsWith(".localhost");
-}
-function normalizeHost(value) {
-  return parseHost(value).host;
-}
-function preferRequestHost(candidateHost, requestHost) {
-  const candidate = parseHost(candidateHost);
-  const request = parseHost(requestHost);
-  if (!candidate.host) {
-    return request.host;
-  }
-  if (!request.port) {
-    return candidate.host;
-  }
-  if (!candidate.port && candidate.hostname === request.hostname) {
-    return request.host;
-  }
-  return candidate.host;
-}
-function isLocalPlatformRequestHost(requestHost, platformBaseDomain) {
-  const request = parseHost(requestHost);
-  const platformBase = parseHost(platformBaseDomain);
-  if (!request.hostname || !platformBase.hostname || !isLocalHostname(platformBase.hostname)) {
-    return false;
-  }
-  if (platformBase.port && request.port && platformBase.port !== request.port) {
-    return false;
-  }
-  const suffix = `.${platformBase.hostname}`;
-  if (!request.hostname.endsWith(suffix)) {
-    return false;
-  }
-  const prefix = request.hostname.slice(0, -suffix.length);
-  return prefix.length > 0 && !prefix.includes(".");
-}
-function mergeVaryHeader(existing, values) {
-  const incoming = Array.isArray(values) ? values : [values];
-  const merged = /* @__PURE__ */ new Map();
-  for (const entry of [existing || "", ...incoming]) {
-    for (const token of entry.split(",")) {
-      const normalized = token.trim();
-      if (!normalized) {
-        continue;
-      }
-      merged.set(normalized.toLowerCase(), normalized);
-    }
-  }
-  return Array.from(merged.values()).join(", ");
 }
 
 const DEFAULT_ROBOTS_TXT = "User-agent: *\nAllow: /\n";
@@ -253,5 +156,5 @@ function getPublicFeedStatusCode(error) {
   return 500;
 }
 
-export { fetchPublicRoutes as a, buildRobotsTxt as b, buildSitemapXml as c, fetchPublicSite as f, getPublicFeedStatusCode as g, mergeVaryHeader as m, normalizeHost as n };
+export { fetchPublicRoutes as a, buildRobotsTxt as b, buildSitemapXml as c, fetchPublicSite as f, getPublicFeedStatusCode as g };
 //# sourceMappingURL=publicFeed.mjs.map

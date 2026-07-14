@@ -1,4 +1,4 @@
-import { d as defineEventHandler, g as getQuery, u as useRuntimeConfig } from '../../../nitro/nitro.mjs';
+import { d as defineEventHandler, a as getQuery, u as useRuntimeConfig } from '../../../nitro/nitro.mjs';
 import 'node:http';
 import 'node:https';
 import 'node:events';

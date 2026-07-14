@@ -123,3 +123,25 @@ export function normalizeBlockType(type?: string | null): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '')
 }
+
+// The stored/served body schema wraps a page's sections in a single `__body`
+// root node (see the renderer's ROOT_TYPES). Section-level detection — first
+// hero, header-overlay marker, hero-layout sniff — must inspect the sections
+// INSIDE that wrapper, not the wrapper itself (which carries none of those
+// fields). This peels one body-root level; a schema that is already a flat
+// section list (older sites, or a header/footer schema) is returned unchanged,
+// so it is safe to route every body-section lookup through it.
+export function normalizeBodySectionNodes(schema?: SchemaInput): PublicBlockNode[] {
+  const nodes = normalizeSchemaNodes(schema)
+  if (nodes.length === 1) {
+    const only = nodes[0]
+    const type = normalizeBlockType((only as Record<string, unknown>)?.type as string | undefined)
+    if (type === 'body' || getNodeName(only) === 'Body') {
+      const inner = getNodeChildren(only)
+      if (inner.length > 0) {
+        return inner
+      }
+    }
+  }
+  return nodes
+}

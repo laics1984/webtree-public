@@ -1,5 +1,6 @@
-import { d as defineEventHandler, u as useRuntimeConfig, a as getHeader, s as setHeader, c as createError } from '../nitro/nitro.mjs';
-import { n as normalizeHost, m as mergeVaryHeader, a as fetchPublicRoutes, c as buildSitemapXml, g as getPublicFeedStatusCode } from '../_/publicFeed.mjs';
+import { d as defineEventHandler, u as useRuntimeConfig, e as getHeader, f as setHeader, c as createError } from '../nitro/nitro.mjs';
+import { a as fetchPublicRoutes, c as buildSitemapXml, g as getPublicFeedStatusCode } from '../_/publicFeed.mjs';
+import { n as normalizeHost, m as mergeVaryHeader } from '../_/host.mjs';
 import 'node:http';
 import 'node:https';
 import 'node:events';

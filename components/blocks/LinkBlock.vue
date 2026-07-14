@@ -8,6 +8,11 @@ const label = computed(() => getStringField(props.node, 'label', 'innerText', 't
 const nodeClasses = computed(() => getNodeClasses(props.node))
 const nodeStyles = computed(() => getNodeStyles(props.node))
 const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
+// Attributes CTA clicks to this block so the tracking snippet can report them.
+const ctaId = computed(() => {
+  const id = String(props.node?.id || '').trim()
+  return id ? id.slice(0, 80) : undefined
+})
 </script>
 
 <template>
@@ -16,6 +21,7 @@ const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
     :class="nodeClasses"
     :style="nodeStyles"
     :data-wt-node-id="nodeDomId"
+    :data-wt-cta="ctaId"
     :to="href"
   >
     {{ label }}

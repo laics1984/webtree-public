@@ -9,11 +9,13 @@ import {
   runtimeHeaderShrinkKey,
   runtimeMenusKey,
 } from '~/lib/blockRuntime'
+import { isFirstSectionHeaderOverlaySafe } from '~/lib/headerOverlay'
 import { buildResponsiveStylesheet } from '~/lib/responsiveRuntime'
 import {
   findFirstNonBreadcrumbNode,
   getNodeName,
   isHeroSectionName,
+  normalizeBodySectionNodes,
   normalizeSchemaNodes,
 } from '~/lib/schema'
 import { buildCssVars } from '~/lib/styles'
@@ -73,8 +75,11 @@ const pageWidthMode = computed(() => {
 })
 const runtimeHeaderSchema = computed(() => props.site?.headerSchema)
 
-// Static, site-wide opt-in (escape hatch — currently always false from the
-// generator). Kept so a future backend flag can still force overlay on.
+// Site-wide overlay intent from the generator (behavior.overlay). On its own
+// it does NOT float the header on a page — each page's first section must
+// also carry the generator's `headerOverlaySafe` marker (see
+// firstSectionOverlaySafe below), so pages that open with a compact hero on a
+// light background keep the solid sticky header from scroll 0.
 const staticHeaderOverlay = computed(() => {
   const headerSchema = props.site?.headerSchema
 
@@ -97,7 +102,7 @@ const staticHeaderOverlay = computed(() => {
 // emitted by schema_builder.py's _build_hero_background? No new backend field
 // needed — the signature is already present in bodySchema.
 const heroIsBackgroundLayout = computed(() => {
-  const nodes = normalizeSchemaNodes(props.bodySchema as any)
+  const nodes = normalizeBodySectionNodes(props.bodySchema as any)
   const first = findFirstNonBreadcrumbNode(nodes)?.node
   if (!first) return false
   if ((first as Record<string, unknown>)?.name !== 'Hero') return false
@@ -160,7 +165,7 @@ const headerShrinkOnScroll = computed(() => readHeaderBehavior()?.shrinkOnScroll
 
 const headerShrinkOffset = computed(() => {
   // Overlay headers share the reveal trigger — one scroll moment, two effects.
-  if (staticHeaderOverlay.value || heroIsBackgroundLayout.value) {
+  if (wantsHeaderOverlay.value) {
     return headerRevealOffset.value
   }
   const raw = readHeaderBehavior()?.scrollShrinkOffset
@@ -218,9 +223,27 @@ const runtimeHeaderShrink = computed(() => ({
   ratio: headerShrinkRatio.value,
 }))
 
+// Per-page marker from the generator: the first section is a full-bleed hero
+// whose dark legibility overlay keeps the transparent header's white ink
+// readable. Catalog heroes carry this instead of the legacy style signature
+// sniffed by heroIsBackgroundLayout above.
+const firstSectionOverlaySafe = computed(() =>
+  isFirstSectionHeaderOverlaySafe(props.bodySchema)
+)
+
+// The transparent phase runs when either (a) the legacy full-bleed style
+// signature matches (pre-marker sites keep today's behavior), or (b) the
+// generator asked for overlay site-wide AND this page's first section is
+// marked overlay-safe. behavior.overlay stays the site-wide kill switch for
+// marker-carrying sites.
+const wantsHeaderOverlay = computed(
+  () =>
+    heroIsBackgroundLayout.value ||
+    (staticHeaderOverlay.value && firstSectionOverlaySafe.value)
+)
+
 const runtimeHeaderOverlay = computed(() => {
-  const wantsOverlay = staticHeaderOverlay.value || heroIsBackgroundLayout.value
-  if (!wantsOverlay) {
+  if (!wantsHeaderOverlay.value) {
     return false
   }
   // Reveal disabled → stay transparent regardless of scroll position.
@@ -270,7 +293,7 @@ const headerRootMinHeight = computed(() => {
 })
 
 const firstBodySectionIsHero = computed(() => {
-  const nodes = normalizeSchemaNodes(props.bodySchema as any)
+  const nodes = normalizeBodySectionNodes(props.bodySchema as any)
   const first = findFirstNonBreadcrumbNode(nodes)?.node
   return Boolean(first && isHeroSectionName(getNodeName(first)))
 })
@@ -440,6 +463,21 @@ body {
   background: transparent;
   border-bottom-color: transparent;
   backdrop-filter: none;
+}
+
+/* While the header floats transparent over a full-bleed hero, its text-bearing
+   elements (the generator stamps `wt-header-ink` on the brand mark and nav —
+   never the CTA button, which keeps its own solid chrome) switch to white ink.
+   !important is required to beat the generator's inline `color`; the rule
+   vanishes with the class on solidify, so the inline colors return with the
+   200ms header transition. */
+.wt-page-header--overlay .wt-header-ink,
+.wt-page-header--overlay .wt-header-ink * {
+  color: #ffffff !important;
+}
+
+.wt-page-header--overlay .wt-header-ink {
+  text-shadow: 0 1px 12px rgba(15, 23, 42, 0.35);
 }
 
 /* Sticky + overlay combined: pin the transparent header instead of letting

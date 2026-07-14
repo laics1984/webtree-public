@@ -1,5 +1,5 @@
 import process from 'node:process';globalThis._importMeta_={url:import.meta.url,env:process.env};import { tmpdir } from 'node:os';
-import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, sendRedirect, proxyRequest, getRequestHeader, setResponseHeaders, setResponseStatus, send, getRequestHeaders, setResponseHeader, appendResponseHeader, getRequestURL, getResponseHeader, removeResponseHeader, createError, getQuery as getQuery$1, readBody, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getResponseStatus, getRouterParam, getHeader, setHeader, getResponseStatusText } from 'file:///Users/benjamin/Documents/Projects/webtree/webtree-public/node_modules/h3/dist/index.mjs';
+import { defineEventHandler, handleCacheHeaders, splitCookiesString, createEvent, fetchWithEvent, isEvent, eventHandler, setHeaders, sendRedirect, proxyRequest, getRequestHeader, setResponseHeaders, setResponseStatus, send, getRequestHeaders, setResponseHeader, appendResponseHeader, getRequestURL, getResponseHeader, removeResponseHeader, createError, getQuery as getQuery$1, readBody, createApp, createRouter as createRouter$1, toNodeListener, lazyEventHandler, getResponseStatus, getRouterParam, readRawBody, getHeader, setHeader, getResponseStatusText } from 'file:///Users/benjamin/Documents/Projects/webtree/webtree-public/node_modules/h3/dist/index.mjs';
 import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
 import nodeCrypto from 'node:crypto';
@@ -2604,6 +2604,7 @@ async function getIslandContext(event) {
 const _lazy_atUKwT = () => Promise.resolve().then(function () { return contact_post$1; });
 const _lazy_Kqu1K6 = () => Promise.resolve().then(function () { return contentList_get$1; });
 const _lazy_0PMjwA = () => Promise.resolve().then(function () { return content_get$1; });
+const _lazy_j1sj41 = () => Promise.resolve().then(function () { return events_post$1; });
 const _lazy_8uzUu3 = () => Promise.resolve().then(function () { return page_get$1; });
 const _lazy_QqBHOR = () => Promise.resolve().then(function () { return resolve_get$1; });
 const _lazy_evhFjv = () => Promise.resolve().then(function () { return routes_get$1; });
@@ -2618,6 +2619,7 @@ const handlers = [
   { route: '/api/public/contact', handler: _lazy_atUKwT, lazy: true, middleware: false, method: "post" },
   { route: '/api/public/content-list', handler: _lazy_Kqu1K6, lazy: true, middleware: false, method: "get" },
   { route: '/api/public/content', handler: _lazy_0PMjwA, lazy: true, middleware: false, method: "get" },
+  { route: '/api/public/events', handler: _lazy_j1sj41, lazy: true, middleware: false, method: "post" },
   { route: '/api/public/page', handler: _lazy_8uzUu3, lazy: true, middleware: false, method: "get" },
   { route: '/api/public/resolve', handler: _lazy_QqBHOR, lazy: true, middleware: false, method: "get" },
   { route: '/api/public/routes', handler: _lazy_evhFjv, lazy: true, middleware: false, method: "get" },
@@ -3116,6 +3118,37 @@ const content_get = defineEventHandler(async (event) => {
 const content_get$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,
   default: content_get
+}, Symbol.toStringTag, { value: 'Module' }));
+
+const events_post = defineEventHandler(async (event) => {
+  var _a;
+  const config = useRuntimeConfig();
+  const body = await readRawBody(event);
+  const forwardedFor = getRequestHeader(event, "x-forwarded-for");
+  const remoteAddress = (_a = event.node.req.socket) == null ? void 0 : _a.remoteAddress;
+  const clientIp = [forwardedFor, remoteAddress].filter(Boolean).join(", ");
+  const userAgent = getRequestHeader(event, "user-agent") || "";
+  if (body) {
+    try {
+      await $fetch(`${config.publicApiBase}/api/public/events`, {
+        method: "POST",
+        body,
+        headers: {
+          "Content-Type": "text/plain",
+          ...clientIp ? { "X-Forwarded-For": clientIp } : {},
+          "User-Agent": userAgent
+        }
+      });
+    } catch {
+    }
+  }
+  setResponseStatus(event, 204);
+  return null;
+});
+
+const events_post$1 = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
+  __proto__: null,
+  default: events_post
 }, Symbol.toStringTag, { value: 'Module' }));
 
 const page_get = defineEventHandler(async (event) => {

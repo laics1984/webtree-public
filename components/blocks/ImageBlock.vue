@@ -30,7 +30,21 @@ const isLogoShrinkActive = computed(() => isBrandLogo.value && runtimeHeaderShri
 
 const nodeStyles = computed(() => {
   const styles = getNodeStyles(props.node)
-  const wrapperStyles = getImageWrapperStyles(styles, nodeClasses.value)
+  let wrapperStyles = getImageWrapperStyles(styles, nodeClasses.value)
+  // A brand logo must render at its natural aspect, sized to fit — never the
+  // default full-width `height:100%` `object-fit:cover` box, which crops the
+  // logo into a band. Mirrors the builder's `isBrandLogoPlaceholder` frame
+  // (`inline-flex w-auto`, no crop). The active px dimension (height, with
+  // width:auto) stays on the wrapper so the on-scroll shrink still drives it.
+  if (isBrandLogo.value) {
+    wrapperStyles = {
+      ...wrapperStyles,
+      display: 'inline-flex',
+      alignItems: 'center',
+      width: 'auto',
+      overflow: 'visible',
+    }
+  }
   if (!isLogoShrinkActive.value) {
     return wrapperStyles
   }
@@ -43,7 +57,13 @@ const nodeStyles = computed(() => {
 // Styling that must live on the <img> element itself.
 const imgStyle = computed(() => {
   const styles = getNodeStyles(props.node)
-  return getImageElementStyles(styles)
+  const base = getImageElementStyles(styles)
+  // Logo: fill the wrapper's (shrinkable) height, keep width auto for aspect,
+  // and `contain` so it's never cropped. Overrides `.wt-image`'s 100%×100%.
+  if (isBrandLogo.value) {
+    return { ...base, objectFit: 'contain', width: 'auto', height: '100%' }
+  }
+  return base
 })
 </script>
 

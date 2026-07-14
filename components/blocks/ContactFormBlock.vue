@@ -156,6 +156,8 @@ async function onSubmit() {
   try {
     await submitPublicContact(getRequestHost(), payload)
     status.value = 'success'
+    // Conversion event — only on a successful submission, per the tracking contract.
+    useNuxtApp().$wtTrack?.('form_submit', { formId: baseId.value })
   } catch (error: any) {
     status.value = 'error'
     errorMessage.value =

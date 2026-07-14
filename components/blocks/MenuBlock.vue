@@ -669,6 +669,7 @@ function isExternalHref(href?: string | null) {
                 v-for="actionLink in headerSupplemental.actionLinks"
                 :key="actionLink.id"
                 class="wt-mobile-menu-action wt-ui-button wt-ui-link"
+                :data-wt-cta="actionLink.id"
                 :to="actionLink.href"
                 :target="actionLink.target || undefined"
                 :rel="actionLink.rel || undefined"
