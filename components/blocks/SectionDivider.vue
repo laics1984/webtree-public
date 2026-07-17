@@ -10,7 +10,7 @@ import {
   type SectionDividerEdge,
   type SectionDividerPosition,
 } from '~/lib/sectionDivider'
-import { grainDataUri, resolveColorToHex, resolvePageBackgroundHex, resolvePaletteHex, sampleMeshEdgeStops, type MeshEdgeStop } from '~/lib/backgroundTexture'
+import { grainDataUriRaw, resolveColorToHex, resolvePageBackgroundHex, resolvePaletteHex, sampleMeshEdgeStops, type MeshEdgeStop } from '~/lib/backgroundTexture'
 import { runtimeBuilderStylesKey } from '~/lib/blockRuntime'
 
 // Renders the top/bottom shape-divider SVGs for a section-like block. Mounted
@@ -110,7 +110,7 @@ const edges = computed<RenderedEdge[]>(() => {
         width="140"
         height="140"
       >
-        <image :href="grainDataUri()" width="140" height="140" />
+        <image :href="grainDataUriRaw()" width="140" height="140" />
       </pattern>
       <!-- Sampled left-to-right across the matched section's width. flipX
            mirrors this along with the shape (a transform on the whole <svg>),
