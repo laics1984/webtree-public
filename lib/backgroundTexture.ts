@@ -175,10 +175,18 @@ export const meshGradient = (primaryHex: string): string => {
   }).join(', ')
 }
 
-/** A tiny SVG fractal-noise grain texture as a `url(data:...)` value. Mirrors
+/** A tiny SVG fractal-noise grain texture as a bare `data:` URI. Mirrors
  * grain_data_uri() in schema_builder.py byte-for-byte (same markup), so the
- * rendered noise pattern is identical between editor and Python bake. */
-export const grainDataUri = (opacity = 0.55): string => {
+ * rendered noise pattern is identical between editor and Python bake.
+ *
+ * The default opacity MUST track grain_data_uri()'s: this module recomputes
+ * grain live and overrides Python's bake, but only for sections eligible under
+ * resolveSectionBackgroundImage — so a mismatch renders two different grain
+ * strengths on one page.
+ *
+ * This is the form an SVG `<image href>` needs; for a CSS `background-image`
+ * use grainDataUri(), which adds the `url(...)` wrapper CSS requires. */
+export const grainDataUriRaw = (opacity = 0.2): string => {
   const svg =
     "<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'>" +
     "<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' " +
@@ -186,8 +194,11 @@ export const grainDataUri = (opacity = 0.55): string => {
     "<feColorMatrix type='saturate' values='0'/></filter>" +
     `<rect width='140' height='140' filter='url(#n)' opacity='${opacity}'/></svg>`
   const encoded = typeof btoa === 'function' ? btoa(svg) : Buffer.from(svg, 'utf-8').toString('base64')
-  return `url("data:image/svg+xml;base64,${encoded}")`
+  return `data:image/svg+xml;base64,${encoded}`
 }
+
+/** The grain texture as a `url(data:...)` value, for CSS `background-image`. */
+export const grainDataUri = (opacity = 0.2): string => `url("${grainDataUriRaw(opacity)}")`
 
 /** Compose the decorative `backgroundImage` value for `texture` (grain and/or
  * mesh layers), or null for 'flat'. Mirrors section_background_image(). */

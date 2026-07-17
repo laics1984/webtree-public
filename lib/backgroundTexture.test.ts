@@ -1,7 +1,11 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   backgroundImageForTexture,
   getNodeBackgroundTexture,
+  grainDataUri,
+  grainDataUriRaw,
   resolveColorToHex,
   resolvePageBackgroundHex,
   resolvePaletteHex,
@@ -9,6 +13,52 @@ import {
   resolveThemeTexture,
   sampleMeshEdgeStops,
 } from './backgroundTexture'
+
+// The two grain helpers exist because their consumers need different forms:
+// CSS `background-image` wants `url("data:...")`, an SVG `<image href>` wants
+// the bare `data:` URI. Feeding the CSS form to <image href> makes the browser
+// resolve it as a relative URL, so the grain silently never paints.
+describe('grainDataUriRaw / grainDataUri', () => {
+  it('returns a bare data URI, valid for an SVG <image href>', () => {
+    const raw = grainDataUriRaw()
+    expect(raw).toMatch(/^data:image\/svg\+xml;base64,[A-Za-z0-9+/=]+$/)
+    expect(raw).not.toContain('url(')
+  })
+
+  it('wraps the same payload in url("...") for CSS', () => {
+    expect(grainDataUri()).toBe(`url("${grainDataUriRaw()}")`)
+  })
+
+  it('encodes the 140x140 fractal-noise SVG at the given opacity', () => {
+    const payload = grainDataUriRaw(0.42).replace('data:image/svg+xml;base64,', '')
+    const svg = Buffer.from(payload, 'base64').toString('utf-8')
+    expect(svg).toContain("width='140' height='140'")
+    expect(svg).toContain("type='fractalNoise'")
+    expect(svg).toContain("opacity='0.42'")
+  })
+
+  // Pins the markup to grain_data_uri() in schema_builder.py. Python lowered
+  // its default 0.55 -> 0.20 and these mirrors silently kept 0.55, so the bake
+  // and the live recompute drew grain at different strengths.
+  it('defaults to the same opacity Python bakes', () => {
+    const payload = grainDataUriRaw().replace('data:image/svg+xml;base64,', '')
+    expect(Buffer.from(payload, 'base64').toString('utf-8')).toContain("opacity='0.2'")
+  })
+})
+
+// No component-test harness in this repo, so pin the call site at the source
+// level: SectionDivider.vue's <image href> must use the raw variant. A lib-only
+// test still passes if the component reverts to the CSS-wrapped helper.
+describe('SectionDivider.vue grain <image href>', () => {
+  it('binds the raw data URI, not the CSS url(...) form', () => {
+    const source = readFileSync(
+      fileURLToPath(new URL('../components/blocks/SectionDivider.vue', import.meta.url)),
+      'utf-8'
+    )
+    expect(source).toContain(':href="grainDataUriRaw()"')
+    expect(source).not.toContain(':href="grainDataUri()"')
+  })
+})
 
 describe('backgroundImageForTexture', () => {
   it('returns null for flat/absent', () => {
