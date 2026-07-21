@@ -209,6 +209,28 @@ const menuLabel = computed(() => getStringField(props.node, 'menuLabel') || 'Sit
 const isHeaderPrimaryMenu = computed(() => slot.value === 'primary' || variant.value === 'header-inline')
 const isHeaderUtilityMenu = computed(() => slot.value === 'utility' || variant.value === 'utility-inline')
 const isFooterColumnsMenu = computed(() => slot.value === 'footer' || variant.value === 'footer-columns')
+const isSocialInlineMenu = computed(() => {
+  if (slot.value === 'social' || variant.value === 'social-inline') return true
+  const vis = visibleItems.value
+  if (vis.length === 0) return false
+  return vis.every((item) => {
+    const key = (item.label || '').trim().toLowerCase()
+    return key in SOCIAL_ICON_PATHS
+  })
+})
+const isSocialInHeader = computed(() => {
+  if (!isSocialInlineMenu.value) return false
+  const id = nodeDomId.value
+  if (!id) return false
+  const findInTree = (nodes: PublicBlockNode[]): boolean => {
+    for (const node of nodes) {
+      if (getNodeDomId(node) === id) return true
+      if (findInTree(getNodeChildren(node))) return true
+    }
+    return false
+  }
+  return findInTree(normalizeSchemaNodes(runtimeHeaderSchema.value))
+})
 const isOverlayHeader = computed(() => runtimeHeaderOverlay.value)
 
 const items = computed<RuntimeMenuItem[]>(() => resolveMenuItemsForNode(props.node))
@@ -226,6 +248,7 @@ const hasFooterColumnGroups = computed(
 
 const headerSupplemental = computed(() => {
   const utilityItems: RuntimeMenuItem[] = []
+  const socialItems: RuntimeMenuItem[] = []
   const actionLinks: HeaderActionLink[] = []
   const currentNodeId = nodeDomId.value
 
@@ -244,14 +267,21 @@ const headerSupplemental = computed(() => {
     if (type === 'menu') {
       const nodeSlot = (getStringField(node, 'slot') || '').trim().toLowerCase()
       const nodeVariant = (getStringField(node, 'variant') || '').trim().toLowerCase()
+      const nodeItems = resolveMenuItemsForNode(node).filter((item) => item?.visible !== false)
       const isUtilityMenu =
         nodeSlot === 'utility' || nodeVariant === 'utility-inline'
+      const isSocialMenu =
+        nodeSlot === 'social' || nodeVariant === 'social-inline' ||
+        (nodeItems.length > 0 && nodeItems.every((item) => {
+          const key = (item.label || '').trim().toLowerCase()
+          return key in SOCIAL_ICON_PATHS
+        }))
 
-      if (!isUtilityMenu) {
-        return
+      if (isSocialMenu) {
+        socialItems.push(...nodeItems)
+      } else if (isUtilityMenu) {
+        utilityItems.push(...nodeItems)
       }
-
-      utilityItems.push(...resolveMenuItemsForNode(node).filter((item) => item?.visible !== false))
       return
     }
 
@@ -278,6 +308,7 @@ const headerSupplemental = computed(() => {
 
   return {
     utilityItems,
+    socialItems,
     actionLinks,
   }
 })
@@ -511,6 +542,52 @@ function getActionLinkStyle(actionLink: HeaderActionLink): CSSProperties {
 function isExternalHref(href?: string | null) {
   return typeof href === 'string' && /^(https?:)?\/\//.test(href)
 }
+
+const SOCIAL_ICON_PATHS: Record<string, string> = {
+  facebook: 'M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073c0 6.026 4.388 11.022 10.125 11.927v-8.437H7.078v-3.49h3.047V9.413c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971h-1.513c-1.49 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796v8.437C19.612 23.095 24 18.1 24 12.073',
+  instagram: 'M12 2.163c3.204 0 3.584.012 4.85.07 1.17.054 1.805.249 2.228.415.56.217.96.477 1.38.896.42.42.679.82.896 1.38.166.422.36 1.057.415 2.227.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.849c-.054 1.17-.249 1.805-.415 2.228a3.72 3.72 0 0 1-.896 1.38 3.72 3.72 0 0 1-1.38.896c-.423.166-1.058.36-2.228.415-1.266.058-1.646.07-4.85.07s-3.584-.012-4.849-.07c-1.17-.054-1.805-.249-2.228-.415a3.72 3.72 0 0 1-1.38-.896 3.72 3.72 0 0 1-.896-1.38c-.166-.423-.36-1.058-.415-2.228C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.849c.054-1.17.249-1.805.415-2.228.217-.56.477-.96.896-1.38a3.72 3.72 0 0 1 1.38-.896c.423-.166 1.058-.36 2.228-.415C8.416 2.175 8.796 2.163 12 2.163M12 0C8.741 0 8.333.014 7.053.072 5.775.131 4.903.333 4.14.63a5.88 5.88 0 0 0-2.126 1.384A5.88 5.88 0 0 0 .63 4.14C.333 4.903.131 5.775.072 7.053.014 8.333 0 8.741 0 12s.014 3.667.072 4.947c.059 1.278.261 2.15.558 2.913a5.88 5.88 0 0 0 1.384 2.126A5.88 5.88 0 0 0 4.14 23.37c.763.297 1.635.499 2.913.558C8.333 23.986 8.741 24 12 24s3.667-.014 4.947-.072c1.278-.059 2.15-.261 2.913-.558a5.88 5.88 0 0 0 2.126-1.384 5.88 5.88 0 0 0 1.384-2.126c.297-.763.499-1.635.558-2.913C23.986 15.667 24 15.259 24 12s-.014-3.667-.072-4.947c-.059-1.278-.261-2.15-.558-2.913a5.88 5.88 0 0 0-1.384-2.126A5.88 5.88 0 0 0 19.86.63C19.097.333 18.225.131 16.947.072 15.667.014 15.259 0 12 0m0 5.838a6.163 6.163 0 1 0 0 12.325 6.163 6.163 0 0 0 0-12.325M12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8m6.406-10.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881',
+  x: 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z',
+  twitter: 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z',
+  linkedin: 'M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065m1.782 13.019H3.555V9h3.564zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0z',
+  youtube: 'M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.546 12 3.546 12 3.546s-7.505 0-9.377.504A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.504 9.376.504 9.376.504s7.505 0 9.377-.504a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814M9.545 15.568V8.432L15.818 12z',
+  tiktok: 'M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z',
+  pinterest: 'M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 0 1 .083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12.017 24c6.624 0 11.99-5.367 11.99-11.988C24.007 5.367 18.641.001 12.017.001z',
+  github: 'M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12',
+  whatsapp: 'M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z',
+  telegram: 'M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.016 8.297c-.1.62-1.728 8.49-2.44 11.264-.301 1.175-.895 1.568-1.469 1.608-1.248.086-2.196-.825-3.405-1.617-1.892-1.24-2.96-2.012-4.796-3.224-2.122-1.4-.746-2.17.463-3.428.317-.33 5.827-5.34 5.934-5.796.013-.057.025-.27-.1-.382s-.31-.037-.443-.022c-.189.022-3.2 2.034-9.032 5.974-.854.587-1.628.873-2.322.858-.765-.017-2.234-.433-3.327-.788-1.34-.436-2.405-.666-2.313-1.406.048-.385.577-.78 1.587-1.184 6.218-2.708 10.362-4.494 12.434-5.357 5.925-2.465 7.156-2.893 7.957-2.907.176-.003.571.041.827.249.216.175.275.411.304.577.029.166.065.543.036.838z',
+  threads: 'M12.186 24h-.007c-3.581-.024-6.334-1.205-8.184-3.509C2.35 18.44 1.5 15.586 1.472 12.01v-.017c.03-3.579.879-6.43 2.525-8.482C5.845 1.205 8.6.024 12.18 0h.014c2.746.02 5.043.725 6.826 2.098 1.677 1.29 2.858 3.13 3.509 5.467l-2.773.776c-1.003-3.593-3.473-5.382-7.553-5.416-2.754.02-4.799.946-6.076 2.751-1.2 1.696-1.818 4.13-1.839 7.233v.12c.07 6.37 3.26 9.908 8.89 9.966.086-.001 3.202-.076 5.303-1.478V16.73h-4.66v-2.678h7.593v7.83C19.854 23.1 16.418 24 12.186 24zm2.789-8.793c2.141.104 3.748 1.144 4.063 3.592.016.126-.09.234-.217.234h-.001l-1.063-.006a.216.216 0 0 1-.213-.183c-.259-1.615-1.251-2.386-2.679-2.386-1.857 0-2.907 1.37-2.907 3.305 0 1.934 1.05 3.305 2.907 3.305 1.267 0 2.218-.586 2.596-1.773a.216.216 0 0 1 .206-.152l1.075.006c.13.001.228.121.198.247-.439 1.856-1.835 2.925-4.075 2.925-2.654 0-4.19-1.946-4.19-4.558 0-2.612 1.536-4.558 4.19-4.558l.11.002',
+}
+
+function socialIconPath(label?: string | null): string {
+  const key = (label || '').trim().toLowerCase()
+  return SOCIAL_ICON_PATHS[key] || SOCIAL_ICON_PATHS.x || ''
+}
+
+const socialIconSize = computed(() => {
+  const raw = getStringField(props.node, 'iconSize')
+  if (raw) {
+    const n = Number.parseFloat(raw)
+    if (!Number.isNaN(n) && n > 0) return n
+  }
+  return 20
+})
+
+const socialIconColor = computed(() => {
+  return getStringField(props.node, 'iconColor') || null
+})
+
+const socialIconStyles = computed(() => {
+  const size = socialIconSize.value
+  const pad = Math.max(4, Math.round(size * 0.35))
+  const styles: CSSProperties = {
+    '--wt-social-icon-size': `${size}px`,
+    '--wt-social-icon-pad': `${pad}px`,
+  } as CSSProperties
+  if (socialIconColor.value) {
+    styles['--wt-social-icon-color'] = socialIconColor.value
+  }
+  return styles
+})
 </script>
 
 <template>
@@ -664,6 +741,32 @@ function isExternalHref(href?: string | null) {
               </nav>
             </div>
 
+            <div v-if="headerSupplemental.socialItems.length" class="wt-mobile-menu-section">
+              <p class="wt-mobile-menu-section__title">Follow us</p>
+              <nav class="wt-mobile-menu-social" aria-label="Social links">
+                <a
+                  v-for="item in headerSupplemental.socialItems"
+                  :key="`social:${item.id || item.href}`"
+                  class="wt-mobile-menu-social__icon"
+                  :href="item.href || '#'"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  :aria-label="item.label || 'Social link'"
+                  @click="closeMobileMenu"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    class="wt-mobile-menu-social__svg"
+                    aria-hidden="true"
+                  >
+                    <path :d="socialIconPath(item.label)" />
+                  </svg>
+                </a>
+              </nav>
+            </div>
+
             <div v-if="headerSupplemental.actionLinks.length" class="wt-mobile-menu-actions">
               <NuxtLink
                 v-for="actionLink in headerSupplemental.actionLinks"
@@ -726,6 +829,35 @@ function isExternalHref(href?: string | null) {
         </li>
       </ul>
     </div>
+  </nav>
+
+  <nav
+    v-else-if="isSocialInlineMenu"
+    class="wt-social-menu"
+    :class="[nodeClasses, { 'wt-social-menu--header': isSocialInHeader }]"
+    :style="{ ...resolvedStyles, ...socialIconStyles }"
+    :data-wt-node-id="nodeDomId"
+    aria-label="Social links"
+  >
+    <a
+      v-for="item in visibleItems"
+      :key="item.href || item.label"
+      class="wt-social-icon"
+      :href="item.href || '#'"
+      :target="item.target || '_blank'"
+      :rel="item.rel || 'noopener noreferrer'"
+      :aria-label="item.label || 'Social link'"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        class="wt-social-icon__svg"
+        aria-hidden="true"
+      >
+        <path :d="socialIconPath(item.label)" />
+      </svg>
+    </a>
   </nav>
 
   <nav
@@ -1068,5 +1200,101 @@ function isExternalHref(href?: string | null) {
   .wt-menu--hide-mobile {
     display: none;
   }
+}
+
+/* ── Social inline icons ─────────────────────────────────────────────── */
+
+.wt-social-menu {
+  --_icon-size: var(--wt-social-icon-size, 20px);
+  --_icon-pad: var(--wt-social-icon-pad, 7px);
+  --_icon-color: var(--wt-social-icon-color, currentColor);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--_icon-pad) * 1.15);
+  flex-wrap: wrap;
+  color: inherit;
+}
+
+.wt-social-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--_icon-size) + var(--_icon-pad) * 2);
+  height: calc(var(--_icon-size) + var(--_icon-pad) * 2);
+  padding: var(--_icon-pad);
+  border-radius: 50%;
+  color: var(--_icon-color);
+  background: color-mix(in srgb, var(--_icon-color) 8%, transparent);
+  text-decoration: none;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  opacity: 0.88;
+}
+
+.wt-social-icon:hover,
+.wt-social-icon:focus-visible {
+  background-color: color-mix(in srgb, var(--_icon-color) 16%, transparent);
+  opacity: 1;
+}
+
+@media (max-width: 1023.98px) {
+  .wt-social-menu--header {
+    display: none;
+  }
+}
+
+.wt-social-icon:focus-visible {
+  outline: 2px solid var(--_icon-color);
+  outline-offset: 2px;
+}
+
+.wt-social-icon__svg {
+  width: var(--_icon-size);
+  height: var(--_icon-size);
+  flex-shrink: 0;
+  fill: currentColor;
+}
+
+/* ── Mobile drawer social icons ──────────────────────────────────────── */
+
+.wt-mobile-menu-social {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0 0.75rem;
+}
+
+.wt-mobile-menu-social__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: inherit;
+  background: rgba(148, 163, 184, 0.08);
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.wt-mobile-menu-social__icon:hover,
+.wt-mobile-menu-social__icon:focus-visible {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.wt-mobile-menu-sheet--overlay .wt-mobile-menu-social__icon {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.wt-mobile-menu-sheet--overlay .wt-mobile-menu-social__icon:hover,
+.wt-mobile-menu-sheet--overlay .wt-mobile-menu-social__icon:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.wt-mobile-menu-social__svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  fill: currentColor;
 }
 </style>

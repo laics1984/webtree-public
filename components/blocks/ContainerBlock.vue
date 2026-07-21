@@ -25,7 +25,7 @@ import {
   resolveSectionBackgroundImage,
   resolveThemeTexture,
 } from '~/lib/backgroundTexture'
-import { runtimeBuilderStylesKey, runtimeHeaderOverlayKey, runtimeHeaderShrinkKey } from '~/lib/blockRuntime'
+import { getNodeField, runtimeBuilderStylesKey, runtimeHeaderOverlayKey, runtimeHeaderShrinkKey } from '~/lib/blockRuntime'
 import { getShrunkHeaderPaddingYStyles, getShrunkMinHeight, HEADER_ROW_CONTAINER_TYPES } from '~/lib/headerShrink'
 
 // Node types eligible for the live grain/mesh texture override. Roots
@@ -88,6 +88,7 @@ const isColumnLayout = computed(() => isTwoColumnLayout.value || isThreeColumnLa
 const isBodyRoot = computed(() => nodeType.value === 'body')
 const isHeaderRoot = computed(() => nodeType.value === 'header')
 const isFooterRoot = computed(() => nodeType.value === 'footer')
+const isHeaderBar = computed(() => getNodeField(props.node, 'headerBar') === true)
 // The header ROOT node renders its own backgroundColor/border/shadow inline
 // (same as any container), which sits *inside* PublicSiteShell's `<header>`
 // wrapper and paints over the wrapper's `.wt-page-header--overlay { background:
@@ -95,6 +96,14 @@ const isFooterRoot = computed(() => nodeType.value === 'footer')
 // Strip the same background-ish keys here, on the node that actually paints
 // them, whenever the overlay is active (i.e. not yet scrolled past the reveal
 // offset, or reveal is disabled).
+//
+// Self-chrome archetypes (floating pill) carry their background on the inner
+// `headerBar` container, NOT the root — the root is always transparent. Their
+// bar must keep its chrome during overlay (the pill floats as-is, no
+// transparent-then-solidify phase). Only the root is stripped; the bar is
+// left untouched. Reveal-style archetypes have no background on the bar
+// (it lives on the root), so excluding the bar from stripping is safe for
+// every archetype.
 const isOverlayHeaderActive = computed(() => isHeaderRoot.value && runtimeHeaderOverlay.value)
 // Shrink the header root's own vertical padding once scrolled past its
 // trigger (see PublicSiteShell.vue) — same node-identity gating as overlay
@@ -261,7 +270,7 @@ const resolvedStyles = computed(() => {
     }
   }
 
-  if (isHeaderRoot.value) {
+  if (isHeaderRoot.value || isHeaderBar.value) {
     merged.transition =
       'background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease, backdrop-filter 200ms ease, padding-top 200ms ease, padding-bottom 200ms ease, min-height 200ms ease'
   }
