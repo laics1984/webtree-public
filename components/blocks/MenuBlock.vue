@@ -323,7 +323,7 @@ const resolvedStyles = computed(() => {
   }
 
   const styles = { ...nodeStyles.value }
-  delete styles.color
+  styles.color = 'var(--wt-footer-ink, inherit)'
   return styles
 })
 
