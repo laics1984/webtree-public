@@ -1,6 +1,13 @@
 export type JsonPrimitive = string | number | boolean | null
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
 
+// The 4 decorative-background strategies (site-generator's
+// ThemeTokens.background_strategy / BuilderElement.backgroundTexture). A leaf
+// type with no dependents of its own — both lib/backgroundTexture.ts and
+// lib/sectionDivider.ts depend on it, mirroring builder/src/lib/builder-styles.ts's
+// role as the independent leaf for the same type.
+export type BackgroundStrategy = 'flat' | 'mesh' | 'grain' | 'mesh+grain'
+
 export interface PublicStyleTokens {
   [key: string]: JsonPrimitive | JsonPrimitive[] | PublicStyleTokens | undefined
 }
@@ -34,8 +41,8 @@ export interface SiteDefaults {
 
 export interface PublicEntityPayload {
   id: string
-  siteKey: string
-  publicIdentifier?: string | null
+  publicIdentifier: string
+  siteKey?: string | null
   name?: string | null
   resolvedHost: string
   canonicalHost?: string | null
@@ -116,8 +123,8 @@ export interface PublicPageResponse extends PublicSiteResponse {
 }
 
 export interface PublicRoutesResponse {
-  siteKey: string
-  publicIdentifier?: string | null
+  publicIdentifier: string
+  siteKey?: string | null
   resolvedHost: string
   canonicalHost?: string | null
   routes: Array<{
@@ -133,12 +140,13 @@ export interface PublicRoutesResponse {
 }
 
 export type PublicContentItemType = 'article' | 'event'
+export type PublicTemplateType = PublicContentItemType | 'articleListing' | 'eventListing'
 
 export interface PublicTemplatePayload {
   pageId: string
   revisionId?: string
   revisionNo?: number
-  templateFor: PublicContentItemType
+  templateFor: PublicTemplateType
   updatedAt?: string
   bodySchema?: PublicSchemaTree | PublicBlockNode[] | null
 }
@@ -158,9 +166,10 @@ export interface PublicContentItemCategory {
 }
 
 export interface PublicContentItemTag {
-  id: string | number
-  name: string
+  id?: string | number
+  name?: string
   slug: string
+  title?: string
 }
 
 export interface PublicContentItem {
@@ -168,6 +177,7 @@ export interface PublicContentItem {
   type: PublicContentItemType
   title: string
   slug?: string | null
+  canonicalPath?: string | null
   excerpt?: string | null
   body?: string | null
   image?: string | null
@@ -182,22 +192,70 @@ export interface PublicContentItem {
 }
 
 export interface PublicContentItemResponse {
-  entity: { id: string; siteKey?: string | null }
+  entity: { id: string; publicIdentifier: string; siteKey?: string | null }
   item: PublicContentItem
+}
+
+export type PublicResolveKind =
+  | 'article'
+  | 'event'
+  | 'articleListing'
+  | 'eventListing'
+  | 'page'
+  | 'redirect'
+  | 'notFound'
+
+export interface PublicResolveListing {
+  mode: 'all' | 'taxonomy'
+  taxonomyType: 'category' | 'tag' | null
+  taxonomySlug: string | null
+}
+
+export interface PublicResolveResponse {
+  kind: PublicResolveKind
+  id?: string
+  slug?: string
+  canonicalPath?: string
+  redirectTo?: string
+  status?: number
+  template?: { templateFor: PublicContentItemType }
+  listing?: PublicResolveListing | null
+  prefixes?: { article: string; event: string }
 }
 
 export type CmsContentSource = 'articles' | 'events'
 export type CmsListLayout = 'grid' | 'list' | 'featured'
 export type CmsListSelectionMode = 'auto' | 'manual'
+export type CmsTaxonomyType = 'category' | 'tag'
+export type CmsListFilterMode = 'all' | 'currentListing' | 'specificTaxonomy'
+export type CmsListHeadingMode = 'static' | 'archive-title' | 'hide-on-archive'
+export type CmsListPaginationStyle = 'numbered'
+
+export interface CmsListFilter {
+  mode: CmsListFilterMode
+  taxonomyType: CmsTaxonomyType | null
+  taxonomySlug: string | null
+}
+
+export interface CmsListPagination {
+  enabled: boolean
+  style: CmsListPaginationStyle
+  showSummary: boolean
+}
 
 export interface CmsListContent {
   source: CmsContentSource
   heading: string
+  headingMode?: CmsListHeadingMode
+  archiveTitlePrefix?: string
+  archiveTitleSuffix?: string
   showHeading: boolean
   description: string
   showDescription: boolean
   layout: CmsListLayout
   itemCount: number
+  pagination?: CmsListPagination
+  filter?: CmsListFilter
   categorySlug: string | null
   selectionMode: CmsListSelectionMode
   manualIds: string[]
@@ -208,8 +266,20 @@ export interface CmsListContent {
   showCategory: boolean
 }
 
+export interface PublicListingContext {
+  mode: 'all' | 'taxonomy'
+  taxonomy: {
+    type: CmsTaxonomyType
+    slug: string
+    title: string
+    description?: string | null
+  } | null
+  notFound?: boolean
+}
+
 export interface PublicContentListResponse {
-  entity: { id: string; siteKey?: string | null }
+  entity: { id: string; publicIdentifier: string; siteKey?: string | null }
+  listingContext?: PublicListingContext
   items: PublicContentItem[]
   total?: number
   currentPage?: number

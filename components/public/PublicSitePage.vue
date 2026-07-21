@@ -12,6 +12,13 @@ usePublicSeo(payload)
     :site="payload?.site"
     :body-schema="payload?.page?.bodySchema"
   >
-    <SchemaRenderer :schema="payload?.page?.bodySchema" scope="body" />
+    <template #default="{ headerOverlaySpacerPaddingTop, globalHeroMinHeight }">
+      <SchemaRenderer
+        :schema="payload?.page?.bodySchema"
+        scope="body"
+        :overlay-spacer-padding-top="headerOverlaySpacerPaddingTop"
+        :global-hero-min-height="globalHeroMinHeight"
+      />
+    </template>
   </PublicSiteShell>
 </template>

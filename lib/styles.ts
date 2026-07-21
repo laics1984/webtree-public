@@ -124,7 +124,23 @@ export function buildCssVars(styles?: PublicStyleTokens | null) {
   const buttonText = getNestedStyleValue(styles, ['buttons', 'text']) || '#ffffff'
   const buttonRadius = toCssLength(styles?.buttons && isStyleRecord(styles.buttons) ? styles.buttons.radius : null, '14px')
   const pageBackground = getNestedStyleValue(styles, ['page', 'background']) || backgroundColor
+  // Sections center their content with
+  // `padding: max(80px, calc((100% - var(--builder-page-max-width)) / 2))`.
+  // Keep this the configured page width in every mode: "full" only bleeds
+  // section backgrounds (via .wt-site max-width: none), while content stays
+  // pinned to the same column as the header/footer.
   const pageMaxWidth = toCssLength(styles?.page && isStyleRecord(styles.page) ? styles.page.maxWidth : null, '1280px')
+  // Hero photo-background height. Absent → no var emitted, so the hero
+  // template's own fallback (min(100dvh, 900px)) keeps the full-screen look.
+  // Keep in lockstep with builder src/lib/builder-styles.ts.
+  const heroMinHeight = getNestedStyleValue(styles, ['hero', 'minHeight'])
+  // Site-wide hero typography tokens (the builder's "Apply to all heroes" flow).
+  // Size only — font family already cascades via --builder-font-heading/
+  // --builder-font-body, so it's deliberately not part of this token set.
+  // Absent → heroes fall back to their per-element size. Keep in lockstep with
+  // builder src/lib/builder-styles.ts (toBuilderCssVars).
+  const heroHeadingSize = getNestedStyleValue(styles, ['heroTypography', 'headingSize'])
+  const heroBodySize = getNestedStyleValue(styles, ['heroTypography', 'bodySize'])
 
   return {
     ...DEFAULT_CSS_VARS,
@@ -148,6 +164,9 @@ export function buildCssVars(styles?: PublicStyleTokens | null) {
     '--builder-font-heading': headingFont,
     '--builder-button-background': buttonBackground,
     '--builder-button-text': buttonText,
-    '--builder-button-radius': buttonRadius
+    '--builder-button-radius': buttonRadius,
+    ...(heroMinHeight ? { '--builder-hero-min-height': heroMinHeight } : {}),
+    ...(heroHeadingSize ? { '--builder-hero-heading-size': heroHeadingSize } : {}),
+    ...(heroBodySize ? { '--builder-hero-body-size': heroBodySize } : {})
   }
 }

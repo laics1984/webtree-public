@@ -1,5 +1,5 @@
 import type { InjectionKey } from 'vue'
-import type { PublicBlockNode, PublicMenu, PublicMenuItem, PublicSchemaTree } from '~/types/public'
+import type { PublicBlockNode, PublicMenu, PublicMenuItem, PublicSchemaTree, PublicStyleTokens } from '~/types/public'
 
 export type RuntimeMenuItem = PublicMenuItem
 export type RuntimeMenuDefinition = PublicMenu
@@ -7,6 +7,20 @@ export type RuntimeMenuDefinition = PublicMenu
 export const runtimeMenusKey: InjectionKey<ComputedRef<RuntimeMenuDefinition[]>> = Symbol('runtime-menus')
 export const runtimeHeaderSchemaKey: InjectionKey<ComputedRef<PublicSchemaTree | PublicBlockNode[] | null | undefined>> = Symbol('runtime-header-schema')
 export const runtimeHeaderOverlayKey: InjectionKey<ComputedRef<boolean>> = Symbol('runtime-header-overlay')
+// Shrink the header's logo + vertical padding once scrolled past its trigger.
+// `ratio` is the configured shrink amount (0-1, 1 = no shrink). Provided once,
+// globally (mirrors runtimeHeaderOverlayKey) — consumers gate on node identity
+// (ContainerBlock's isHeaderRoot, ImageBlock's brand-name match), not on scope,
+// since header/body/footer are already separate schema trees rendered through
+// separate SchemaRenderer calls — a body image can never literally be the
+// header's brand node.
+export const runtimeHeaderShrinkKey: InjectionKey<ComputedRef<{ active: boolean; ratio: number }>> =
+  Symbol('runtime-header-shrink')
+// Site-wide builder styles (palette hex + theme backgroundTexture default),
+// threaded to SectionBlock.vue/ContainerBlock.vue/SectionDivider.vue so they
+// can live-recompute decorative grain/mesh backgrounds. No prop-drilling path
+// exists through SchemaRenderer.vue/ElementRenderer.vue, hence injection.
+export const runtimeBuilderStylesKey: InjectionKey<ComputedRef<PublicStyleTokens | null | undefined>> = Symbol('runtime-builder-styles')
 
 type LooseRecord = Record<string, unknown>
 

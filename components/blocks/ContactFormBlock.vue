@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { getNodeClasses, getNodeContentRecord, getNodeStyles, getStringField } from '~/lib/blockRuntime'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
+import { submitPublicContact, type PublicContactPayload } from '~/lib/api'
+import { getRequestHost } from '~/lib/host'
 
 type FieldType = 'text' | 'email' | 'tel' | 'textarea'
 type FieldKey = 'firstName' | 'lastName' | 'email' | 'phone' | 'company' | 'message'
@@ -108,6 +110,63 @@ const fields = computed<RuntimeFieldDefinition[]>(() => {
     })
     .filter((field): field is RuntimeFieldDefinition => Boolean(field))
 })
+
+// Maps the block's camelCase field keys onto the API's snake_case payload keys.
+const PAYLOAD_KEY_MAP: Record<string, keyof PublicContactPayload> = {
+  firstName: 'first_name',
+  lastName: 'last_name',
+  email: 'email',
+  phone: 'phone',
+  company: 'company',
+  message: 'message'
+}
+
+const formValues = reactive<Record<string, string>>({})
+const honeypot = ref('')
+const status = ref<'idle' | 'submitting' | 'success' | 'error'>('idle')
+const errorMessage = ref('')
+
+const successHeading = computed(
+  () => getStringField(props.node, 'successHeading') || 'Thanks for reaching out'
+)
+const successBody = computed(
+  () => getStringField(props.node, 'successBody') || "We've received your message and will be in touch soon."
+)
+
+async function onSubmit() {
+  if (status.value === 'submitting') {
+    return
+  }
+  errorMessage.value = ''
+
+  const payload: PublicContactPayload = { email: '', message: '' }
+  for (const field of fields.value) {
+    const target = PAYLOAD_KEY_MAP[field.key]
+    if (!target) {
+      continue
+    }
+    ;(payload as Record<string, unknown>)[target] = (formValues[field.key] || '').trim()
+  }
+  payload.website = honeypot.value
+  if (import.meta.client) {
+    payload.page_url = window.location.href
+  }
+
+  status.value = 'submitting'
+  try {
+    await submitPublicContact(getRequestHost(), payload)
+    status.value = 'success'
+    // Conversion event — only on a successful submission, per the tracking contract.
+    useNuxtApp().$wtTrack?.('form_submit', { formId: baseId.value })
+  } catch (error: any) {
+    status.value = 'error'
+    errorMessage.value =
+      error?.data?.error?.message ||
+      error?.data?.data?.error?.message ||
+      error?.data?.message ||
+      'Sorry, something went wrong. Please try again.'
+  }
+}
 </script>
 
 <template>
@@ -119,7 +178,34 @@ const fields = computed<RuntimeFieldDefinition[]>(() => {
   >
     <div class="wt-contact-form__glow" aria-hidden="true" />
     <div class="wt-contact-form__shells">
-      <form class="wt-contact-form__panel" @submit.prevent>
+      <div v-if="status === 'success'" class="wt-contact-form__success" role="status">
+        <svg
+          class="wt-contact-form__success-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+        <h3 class="wt-contact-form__success-heading">{{ successHeading }}</h3>
+        <p class="wt-contact-form__success-body">{{ successBody }}</p>
+      </div>
+
+      <form v-else class="wt-contact-form__panel" novalidate @submit.prevent="onSubmit">
+        <!-- Honeypot: hidden from humans, bots fill it and get rejected. -->
+        <input
+          v-model="honeypot"
+          class="wt-contact-form__honeypot"
+          type="text"
+          name="website"
+          tabindex="-1"
+          autocomplete="off"
+          aria-hidden="true"
+        >
         <label
           v-for="field in fields"
           :key="field.key"
@@ -203,6 +289,7 @@ const fields = computed<RuntimeFieldDefinition[]>(() => {
           <textarea
             v-if="field.type === 'textarea'"
             :id="`${baseId}-${field.key}`"
+            v-model="formValues[field.key]"
             class="wt-contact-form__control wt-contact-form__textarea"
             :name="field.key"
             :placeholder="field.placeholder"
@@ -213,16 +300,21 @@ const fields = computed<RuntimeFieldDefinition[]>(() => {
           <input
             v-else
             :id="`${baseId}-${field.key}`"
+            v-model="formValues[field.key]"
             class="wt-contact-form__control"
             :type="field.type"
             :name="field.key"
             :placeholder="field.placeholder"
             :required="field.required"
-          />
+          >
         </label>
 
-        <button type="submit" class="wt-contact-form__submit">
-          {{ submitLabel }}
+        <p v-if="status === 'error'" class="wt-contact-form__error" role="alert">
+          {{ errorMessage }}
+        </p>
+
+        <button type="submit" class="wt-contact-form__submit" :disabled="status === 'submitting'">
+          {{ status === 'submitting' ? 'Sending…' : submitLabel }}
         </button>
       </form>
     </div>
@@ -364,6 +456,55 @@ const fields = computed<RuntimeFieldDefinition[]>(() => {
   }
 }
 
+.wt-contact-form__honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wt-contact-form__error {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #dc2626;
+}
+
+.wt-contact-form__success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1.25rem;
+}
+
+.wt-contact-form__success-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0.5rem;
+  border-radius: 999px;
+  color: var(--builder-color-primary, #2563eb);
+  background: color-mix(in srgb, var(--builder-color-primary, #2563eb) 12%, transparent);
+}
+
+.wt-contact-form__success-heading {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--builder-color-text, #111827);
+  font-family: var(--builder-font-heading, var(--builder-font-body, system-ui, sans-serif));
+}
+
+.wt-contact-form__success-body {
+  margin: 0;
+  font-size: 0.95rem;
+  opacity: 0.75;
+  color: var(--builder-color-text, #111827);
+}
+
 .wt-contact-form__submit {
   display: inline-flex;
   align-items: center;
@@ -381,6 +522,11 @@ const fields = computed<RuntimeFieldDefinition[]>(() => {
   color: var(--builder-button-text, #ffffff);
   font-family: var(--builder-font-body, system-ui, sans-serif);
   box-shadow: 0 18px 38px rgba(15, 23, 42, 0.18);
+}
+
+.wt-contact-form__submit:disabled {
+  opacity: 0.65;
+  cursor: progress;
 }
 
 @media (min-width: 640px) {

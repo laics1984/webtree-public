@@ -100,7 +100,7 @@ export function usePublicSeo(payload: Ref<PublicPageResponse | null | undefined>
     const site = payload.value?.site
     const page = payload.value?.page
     const seo = page?.seo
-    const siteName = site?.defaults?.siteName || entity?.siteKey || 'Website'
+    const siteName = site?.defaults?.siteName || entity?.publicIdentifier || 'Website'
     const publicHost = resolvePublicHost(entity, requestHost, config.public.platformBaseDomain)
     const baseUrl = publicHost ? toAbsoluteUrl(`${siteProtocol}://${publicHost}`) : null
     const fallbackTitle = page?.title || siteName
