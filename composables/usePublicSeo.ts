@@ -119,6 +119,13 @@ export function usePublicSeo(payload: Ref<PublicPageResponse | null | undefined>
       meta.push({ name: 'description', content: description })
     }
 
+    const keywords = Array.isArray(seo?.keywords) && seo.keywords.length > 0
+      ? seo.keywords.join(', ')
+      : null
+    if (keywords) {
+      meta.push({ name: 'keywords', content: keywords })
+    }
+
     meta.push({ name: 'robots', content: robots })
     meta.push({ property: 'og:title', content: seo?.ogTitle || title })
     meta.push({ property: 'og:description', content: seo?.ogDescription || description })
