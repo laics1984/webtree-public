@@ -81,6 +81,13 @@ function pickRootBackgroundStyles(schema: unknown): CSSProperties | undefined {
   return pickBackgroundStylesFrom(root)
 }
 
+function pickRootColorStyle(schema: unknown): string | undefined {
+  const [root] = normalizeSchemaNodes(schema as any)
+  if (!root) return undefined
+  const styles = getNodeStyles(root)
+  return typeof styles.color === 'string' ? styles.color : undefined
+}
+
 const cssVars = computed(() => buildCssVars(props.site?.builderStyles))
 const runtimeBuilderStyles = computed(() => props.site?.builderStyles)
 const runtimeMenus = computed(() => props.site?.menus ?? [])
@@ -294,7 +301,15 @@ const runtimeHeaderPosition = computed(() => {
   return 'static'
 })
 const headerWrapperStyle = computed(() => pickRootBackgroundStyles(props.site?.headerSchema))
-const footerWrapperStyle = computed(() => pickRootBackgroundStyles(props.site?.footerSchema))
+const footerWrapperStyle = computed(() => {
+  const bg = pickRootBackgroundStyles(props.site?.footerSchema)
+  const ink = pickRootColorStyle(props.site?.footerSchema)
+  if (!bg && !ink) return undefined
+  return {
+    ...bg,
+    ...(ink ? { color: ink, '--wt-footer-ink': ink } as CSSProperties : {}),
+  }
+})
 
 // Mirror of builder/src/components/tabs/editor-components/Editor.tsx's
 // `shouldSpaceFirstSectionForOverlay` / `headerRootMinHeight` /

@@ -72,7 +72,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.wt-text { color: var(--builder-color-text, var(--wt-color-text)); }
+.wt-text { color: var(--wt-footer-ink, var(--builder-color-text, var(--wt-color-text))); }
 
 .wt-clamp-wrap {
   display: flex;
