@@ -4,6 +4,7 @@ import { getNodeDomId } from '~/lib/responsiveRuntime'
 
 const props = defineProps<{ node: Record<string, any> }>()
 const html = computed(() => getStringField(props.node, 'html', 'innerText', 'text') || '')
+const htmlTag = computed(() => getStringField(props.node, 'htmlTag') || 'div')
 const nodeClasses = computed(() => getNodeClasses(props.node))
 const nodeStyles = computed(() => getNodeStyles(props.node))
 const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
@@ -43,7 +44,8 @@ onMounted(() => {
 
 <template>
   <div v-if="isClamp" class="wt-clamp-wrap">
-    <div
+    <component
+      :is="htmlTag"
       ref="textEl"
       class="wt-text"
       :class="nodeClasses"
@@ -61,7 +63,8 @@ onMounted(() => {
       {{ expanded ? 'Show less' : 'Show more' }}
     </button>
   </div>
-  <div
+  <component
+    :is="htmlTag"
     v-else
     class="wt-text"
     :class="nodeClasses"
@@ -72,7 +75,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.wt-text { color: var(--wt-footer-ink, var(--builder-color-text, var(--wt-color-text))); }
+.wt-text { margin: 0; color: var(--wt-footer-ink, var(--builder-color-text, var(--wt-color-text))); }
 
 .wt-clamp-wrap {
   display: flex;
