@@ -4,6 +4,12 @@ import { getNodeDomId } from '~/lib/responsiveRuntime'
 
 const props = defineProps<{ node: Record<string, any> }>()
 const html = computed(() => getStringField(props.node, 'html', 'innerText', 'text') || '')
+// Semantic tag for this text node ('h1'/'h2' on section titles, set by the
+// generator). Absent → 'div', so existing sites render exactly as before.
+// NOTE: the markup below binds `:innerHTML` rather than using `v-html`.
+// On a dynamic `<component :is>` the v-html directive is dropped during SSR,
+// which ships the page with every text node empty until hydration fills it in.
+const htmlTag = computed(() => getStringField(props.node, 'htmlTag') || 'div')
 const nodeClasses = computed(() => getNodeClasses(props.node))
 const nodeStyles = computed(() => getNodeStyles(props.node))
 const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
@@ -43,13 +49,14 @@ onMounted(() => {
 
 <template>
   <div v-if="isClamp" class="wt-clamp-wrap">
-    <div
+    <component
+      :is="htmlTag"
       ref="textEl"
       class="wt-text"
       :class="nodeClasses"
       :style="clampStyles"
       :data-wt-node-id="nodeDomId"
-      v-html="html"
+      :innerHTML="html"
     />
     <button
       v-if="mounted && overflowing"
@@ -61,18 +68,19 @@ onMounted(() => {
       {{ expanded ? 'Show less' : 'Show more' }}
     </button>
   </div>
-  <div
+  <component
+    :is="htmlTag"
     v-else
     class="wt-text"
     :class="nodeClasses"
     :style="nodeStyles"
     :data-wt-node-id="nodeDomId"
-    v-html="html"
+    :innerHTML="html"
   />
 </template>
 
 <style scoped>
-.wt-text { color: var(--wt-footer-ink, var(--builder-color-text, var(--wt-color-text))); }
+.wt-text { margin: 0; color: var(--wt-footer-ink, var(--builder-color-text, var(--wt-color-text))); }
 
 .wt-clamp-wrap {
   display: flex;
