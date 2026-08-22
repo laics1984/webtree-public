@@ -327,7 +327,23 @@ const resolvedStyles = computed(() => {
   return styles
 })
 
+// A menu whose ink is `var(--wt-pill-ink, …)` belongs to the self-chrome
+// floating pill, which is permanently "overlay" but is NOT transparent — it
+// carries its own glass at every scroll position, and PublicSiteShell flips
+// that var per section. Anything hard-coded to white here is wrong the moment
+// the pill crosses a light band, so the mobile affordances read the var too
+// (with the overlay white as the fallback, i.e. today's value).
+const isAdaptivePillMenu = computed(
+  () =>
+    typeof nodeStyles.value.color === 'string' &&
+    nodeStyles.value.color.includes('--wt-pill-ink')
+)
+
 const toggleTextColor = computed(() => {
+  if (isAdaptivePillMenu.value) {
+    return 'var(--wt-pill-ink, #ffffff)'
+  }
+
   if (isOverlayHeader.value) {
     return '#ffffff'
   }
@@ -343,6 +359,13 @@ const toggleTextColor = computed(() => {
   }
 
   return pickAccessibleTextColor('#ffffff')
+})
+
+const toggleBorderColor = computed(() => {
+  if (isAdaptivePillMenu.value) {
+    return 'var(--wt-pill-hairline, rgba(255,255,255,0.24))'
+  }
+  return isOverlayHeader.value ? 'rgba(255,255,255,0.24)' : 'rgba(148,163,184,0.35)'
 })
 
 watch(
@@ -668,7 +691,7 @@ const socialIconStyles = computed(() => {
       <button
         type="button"
         class="wt-header-menu-toggle__button wt-ui-button wt-ui-menu-button"
-        :style="{ color: toggleTextColor, borderColor: isOverlayHeader ? 'rgba(255,255,255,0.24)' : 'rgba(148,163,184,0.35)' }"
+        :style="{ color: toggleTextColor, borderColor: toggleBorderColor }"
         :aria-expanded="isMobileMenuOpen"
         :aria-label="`Open ${menuLabel}`"
         @click="isMobileMenuOpen = true"

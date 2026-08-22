@@ -9,6 +9,9 @@ const props = defineProps<{ node: Record<string, any> }>()
 const src = computed(() => getStringField(props.node, 'src', 'imageUrl'))
 const alt = computed(() => getStringField(props.node, 'alt', 'title') || '')
 const href = computed(() => getStringField(props.node, 'href') || '')
+// Editorial caption, surfaced by the gallery lightbox (which falls back to
+// `alt` when absent). Not rendered inline — no block in the catalog draws one.
+const caption = computed(() => getStringField(props.node, 'caption') || '')
 const ariaLabel = computed(() => getStringField(props.node, 'ariaLabel') || undefined)
 const isExternalHref = computed(() => /^(https?:)?\/\//.test(href.value))
 const isHero = computed(() => getBooleanField(props.node, 'priority') || getStringField(props.node, 'fetchpriority') === 'high')
@@ -97,6 +100,7 @@ const imgStyle = computed(() => {
       :src="src"
       :alt="alt"
       :style="imgStyle"
+      :data-wt-caption="caption || undefined"
       :loading="isHero ? 'eager' : 'lazy'"
       :fetchpriority="isHero ? 'high' : 'auto'"
     />

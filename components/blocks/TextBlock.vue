@@ -51,7 +51,7 @@ onMounted(() => {
       :class="nodeClasses"
       :style="clampStyles"
       :data-wt-node-id="nodeDomId"
-      v-html="html"
+      :innerHTML="html"
     />
     <button
       v-if="mounted && overflowing"
@@ -70,7 +70,7 @@ onMounted(() => {
     :class="nodeClasses"
     :style="nodeStyles"
     :data-wt-node-id="nodeDomId"
-    v-html="html"
+    :innerHTML="html"
   />
 </template>
 
