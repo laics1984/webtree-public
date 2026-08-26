@@ -1,0 +1,45 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# One deploy at a time; a newer push supersedes an in-flight build.
+concurrency:
+  group: cloudflare-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Get Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      # Nuxt is built with the `cloudflare_module` nitro preset (see nuxt.config.ts),
+      # which emits a Workers-compatible bundle at .output/server + .output/public.
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '4.125.0'
+          command: deploy
