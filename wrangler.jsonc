@@ -1,0 +1,15 @@
+{
+  "name": "webtree-public",
+  "main": ".output/server/index.mjs",
+  "compatibility_date": "2025-01-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".output/public",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "NUXT_PUBLIC_API_BASE": "https://api.fowable.com/",
+    "NUXT_PUBLIC_PLATFORM_BASE_DOMAIN": "public.myfowable.com",
+    "NUXT_PUBLIC_SITE_PROTOCOL": "https"
+  }
+}

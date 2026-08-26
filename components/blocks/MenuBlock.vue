@@ -937,6 +937,14 @@ const socialIconStyles = computed(() => {
   .wt-footer-columns {
     column-count: 2;
   }
+
+  /* Below this breakpoint the columns collapse to a single stack (see
+     column-count above), so a group boundary reads from layout alone —
+     the grid's full breathing room is only needed once there are actual
+     side-by-side columns to separate. */
+  .wt-footer-columns__group--has-children {
+    margin-bottom: 1.5rem;
+  }
 }
 
 @media (min-width: 1280px) {
@@ -951,7 +959,7 @@ const socialIconStyles = computed(() => {
 }
 
 .wt-footer-columns__group--has-children {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .wt-footer-columns__heading {
