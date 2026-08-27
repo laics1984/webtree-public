@@ -3,6 +3,8 @@ import { computed, provide } from 'vue'
 import PublicSiteShell from '~/components/public/PublicSiteShell.vue'
 import SchemaRenderer from '~/components/renderer/SchemaRenderer.vue'
 import { currentListingKey } from '~/lib/currentListing'
+import { getRequestHost } from '~/lib/host'
+import { buildAbsolutePublicUrl } from '~/lib/publicFeed'
 import type { CmsTaxonomyType, PublicContentItemType } from '~/types/public'
 
 const props = defineProps<{
@@ -36,9 +38,26 @@ const headDescription = computed(
     `Browse published ${props.type === 'event' ? 'events' : 'articles'}.`
 )
 
+const config = useRuntimeConfig()
+const route = useRoute()
+const requestHost = getRequestHost()
+
+// Resolved against the site's canonical host so the preview host points its
+// canonical at the client's own domain.
+const canonicalUrl = computed(() =>
+  buildAbsolutePublicUrl(
+    entity.value,
+    requestHost,
+    route.path,
+    config.public.siteProtocol,
+    config.public.platformBaseDomain
+  )
+)
+
 useHead({
   title: () => headTitle.value,
   meta: [{ name: 'description', content: () => headDescription.value }],
+  link: () => [{ rel: 'canonical', href: canonicalUrl.value }],
 })
 </script>
 

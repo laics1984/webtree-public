@@ -48,6 +48,34 @@ Browsers and CDNs route by host, not by entity ID. The app sends the current hos
 - `site.headerSchema`, `page.bodySchema`, and `site.footerSchema` are already assembled renderer payloads.
 - `site.defaults` carries site-level SEO defaults such as title suffix, descriptions, OG image, Twitter card, and JSON-LD.
 
+## Production routing (Cloudflare)
+
+`wrangler.jsonc` does not tell the whole story. Two things about the live routing
+are configured in the Cloudflare zone and are invisible from this repo:
+
+1. **An asset exclusion route.** `asset.myfowable.com` is an R2 custom domain on
+   the same zone as this Worker. Cloudflare routes take precedence over custom
+   domains on the same hostname, so a broad Worker route would intercept every
+   asset request. A route for `asset.myfowable.com/*` with **no Worker attached**
+   negates that. **Do not delete it** — assets break the moment it goes.
+2. **Custom hostnames.** Client domains reach this Worker only once registered as
+   Cloudflare for SaaS custom hostnames on the `myfowable.com` zone. A CNAME
+   alone is not enough: DNS gets the request to Cloudflare, but registration is
+   what tells Cloudflare this Worker should serve it.
+
+Both are set up by the scripts in [`scripts/cloudflare/`](scripts/cloudflare/),
+which also document the run order and the asset-serving gate that must pass
+before the Worker route is widened.
+
+## Indexing policy
+
+Platform preview hosts (`*.public.myfowable.com`) are never indexed; client
+custom domains are. One predicate — `isIndexableHost` in [`lib/indexing.ts`](lib/indexing.ts) —
+drives all four layers: the `X-Robots-Tag` header in
+[`server/middleware/indexing.ts`](server/middleware/indexing.ts), the `robots`
+meta tag, canonical URLs, and `robots.txt` / `sitemap.xml`. AI crawlers, which
+ignore `noindex`, are blocked by `Disallow` on preview hosts instead.
+
 ## Local host behavior
 When `NUXT_PUBLIC_PLATFORM_BASE_DOMAIN` points at a `.localhost` platform host, the app preserves the incoming request host for canonical, sitemap, and robots URLs. That keeps local testing stable on `public_identifier.public.localhost:3000` even if the backend also knows about a separate fallback identifier.
 

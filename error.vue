@@ -2,6 +2,7 @@
 import PublicSiteShell from '~/components/public/PublicSiteShell.vue'
 import { fetchPublicSite } from '~/lib/api'
 import { getRequestHost } from '~/lib/host'
+import { NOINDEX_ROBOTS } from '~/lib/indexing'
 import type { PublicSiteResponse } from '~/types/public'
 
 const props = defineProps<{ error: { statusCode?: number; statusMessage?: string } }>()
@@ -24,7 +25,12 @@ const { data: site } = await useAsyncData<PublicSiteResponse | null>(
   { default: () => null }
 )
 
-useHead({ title })
+// Nuxt renders the error page through its own entry, bypassing app.vue, so the
+// host baseline has to be repeated here.
+useHead({
+  title,
+  meta: useHostIndexing() ? [] : [{ name: 'robots', content: NOINDEX_ROBOTS }],
+})
 </script>
 
 <template>

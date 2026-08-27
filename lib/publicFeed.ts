@@ -1,5 +1,6 @@
 import type { PublicEntityPayload, PublicRoutesResponse, PublicSiteResponse } from '~/types/public'
 import { isLocalPlatformRequestHost, normalizeHost, preferRequestHost } from '~/lib/host'
+import { AI_CRAWLER_DISALLOW_POLICY, isIndexableHost } from '~/lib/indexing'
 
 const DEFAULT_ROBOTS_TXT = 'User-agent: *\nAllow: /\n'
 const VALID_CHANGE_FREQUENCIES = new Set([
@@ -124,6 +125,14 @@ export function buildRobotsTxt(
     : DEFAULT_ROBOTS_TXT.trim()
 
   const basePolicy = normalizedBasePolicy || DEFAULT_ROBOTS_TXT.trim()
+
+  if (!isIndexableHost(requestHost, platformBaseDomain)) {
+    // Crawling stays allowed on purpose: search engines must fetch the page to
+    // see the noindex header/meta, and `Disallow: /` would instead leave
+    // URL-only entries stranded in the index. AI crawlers ignore noindex, so
+    // they are blocked outright. No Sitemap: — a preview host advertises none.
+    return `${basePolicy}\n\n${AI_CRAWLER_DISALLOW_POLICY}\n`
+  }
 
   const sitemapUrl = buildAbsolutePublicUrl(data.entity, requestHost, '/sitemap.xml', siteProtocol, platformBaseDomain)
   return `${basePolicy}\nSitemap: ${sitemapUrl}\n`

@@ -111,11 +111,19 @@ export function preferRequestHost(candidateHost?: string | null, requestHost?: s
   return candidate.host
 }
 
-export function isLocalPlatformRequestHost(requestHost?: string | null, platformBaseDomain?: string | null): boolean {
+/**
+ * True when the request arrives on a per-site platform subdomain — exactly one
+ * label beneath the platform base domain (`acme.public.myfowable.com`,
+ * `acme.public.localhost:3000`) — rather than a client custom domain.
+ *
+ * Deeper hosts (`a.b.public.myfowable.com`) and the bare base domain are not
+ * per-site platform subdomains.
+ */
+export function isPlatformRequestHost(requestHost?: string | null, platformBaseDomain?: string | null): boolean {
   const request = parseHost(requestHost)
   const platformBase = parseHost(platformBaseDomain)
 
-  if (!request.hostname || !platformBase.hostname || !isLocalHostname(platformBase.hostname)) {
+  if (!request.hostname || !platformBase.hostname) {
     return false
   }
 
@@ -131,6 +139,21 @@ export function isLocalPlatformRequestHost(requestHost?: string | null, platform
 
   const prefix = request.hostname.slice(0, -suffix.length)
   return prefix.length > 0 && !prefix.includes('.')
+}
+
+/**
+ * Platform-host check restricted to local development bases (`*.localhost`), used
+ * by canonical resolution to keep dev requests on their own host instead of
+ * rewriting them to a backend-provided canonical domain.
+ */
+export function isLocalPlatformRequestHost(requestHost?: string | null, platformBaseDomain?: string | null): boolean {
+  const platformBaseHostname = normalizeHostname(platformBaseDomain)
+
+  if (!platformBaseHostname || !isLocalHostname(platformBaseHostname)) {
+    return false
+  }
+
+  return isPlatformRequestHost(requestHost, platformBaseDomain)
 }
 
 export function getRequestHost(): string {

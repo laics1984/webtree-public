@@ -1,12 +1,10 @@
 import { fetchPublicSite } from '~/lib/api'
-import { mergeVaryHeader, normalizeHost } from '~/lib/host'
 import { buildRobotsTxt, getPublicFeedStatusCode } from '~/lib/publicFeed'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
-  const host = normalizeHost(String(getHeader(event, 'x-forwarded-host') || getHeader(event, 'host') || ''))
+  const host = getEventRequestHost(event)
 
-  setHeader(event, 'Vary', mergeVaryHeader(getHeader(event, 'vary'), ['Host', 'X-Forwarded-Host']))
   setHeader(event, 'Content-Type', 'text/plain; charset=utf-8')
 
   if (!host) {

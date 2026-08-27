@@ -3,6 +3,8 @@ import { computed, provide } from 'vue'
 import PublicSiteShell from '~/components/public/PublicSiteShell.vue'
 import SchemaRenderer from '~/components/renderer/SchemaRenderer.vue'
 import { currentItemKey } from '~/lib/currentItem'
+import { getRequestHost } from '~/lib/host'
+import { buildAbsolutePublicUrl } from '~/lib/publicFeed'
 import type { PublicContentItemType } from '~/types/public'
 
 const props = defineProps<{
@@ -20,13 +22,27 @@ const entity = computed(() => payload.value!.template.entity)
 const site = computed(() => payload.value!.template.site)
 const scope = computed(() => (props.type === 'event' ? 'event-template' : 'article-template'))
 
+const config = useRuntimeConfig()
+const requestHost = getRequestHost()
+
+// Absolute, and resolved against the site's canonical host so the preview host
+// points its canonical at the client's own domain.
+const canonicalUrl = computed(() =>
+  item.value.canonicalPath
+    ? buildAbsolutePublicUrl(
+        entity.value,
+        requestHost,
+        item.value.canonicalPath,
+        config.public.siteProtocol,
+        config.public.platformBaseDomain
+      )
+    : null
+)
+
 useHead({
   title: () => item.value.title,
   meta: [{ name: 'description', content: () => item.value.excerpt || '' }],
-  link: () =>
-    item.value.canonicalPath
-      ? [{ rel: 'canonical', href: item.value.canonicalPath }]
-      : [],
+  link: () => (canonicalUrl.value ? [{ rel: 'canonical', href: canonicalUrl.value }] : []),
 })
 </script>
 
