@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 import type { JsonValue, PublicPageResponse, SeoPayload } from '~/types/public'
 import { getRequestHost } from '~/lib/host'
+import { NOINDEX_ROBOTS } from '~/lib/indexing'
 import { normalizeSiteProtocol, resolvePublicHost } from '~/lib/publicFeed'
 
 function isJsonObject(value: unknown): value is Record<string, JsonValue> {
@@ -94,6 +95,7 @@ export function usePublicSeo(payload: Ref<PublicPageResponse | null | undefined>
   const config = useRuntimeConfig()
   const requestHost = getRequestHost()
   const siteProtocol = normalizeSiteProtocol(config.public.siteProtocol)
+  const indexable = useHostIndexing()
 
   useHead(() => {
     const entity = payload.value?.entity
@@ -107,7 +109,11 @@ export function usePublicSeo(payload: Ref<PublicPageResponse | null | undefined>
     const title = buildTitle(seo?.title || fallbackTitle, site?.defaults?.titleSuffix)
     const description = seo?.description || page?.description || site?.defaults?.defaultDescription || ''
     const canonical = toAbsoluteUrl(seo?.canonicalUrl || normalizePath(page?.path), baseUrl)
-    const robots = buildRobots(seo, site?.defaults?.robotsDefault || 'index,follow')
+    // Host policy wins outright: a preview host is never indexable, whatever the
+    // page or site defaults ask for.
+    const robots = indexable
+      ? buildRobots(seo, site?.defaults?.robotsDefault || 'index,follow')
+      : NOINDEX_ROBOTS
     const ogImage = toAbsoluteUrl(seo?.ogImage || site?.defaults?.defaultOgImage, baseUrl)
     const twitterImage = toAbsoluteUrl(seo?.twitterImage || ogImage, baseUrl)
     const favicon = toAbsoluteUrl(entity?.favicon, baseUrl)

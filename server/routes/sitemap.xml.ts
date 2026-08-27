@@ -1,16 +1,21 @@
 import { fetchPublicRoutes } from '~/lib/api'
-import { mergeVaryHeader, normalizeHost } from '~/lib/host'
+import { isIndexableHost } from '~/lib/indexing'
 import { buildSitemapXml, getPublicFeedStatusCode } from '~/lib/publicFeed'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
-  const host = normalizeHost(String(getHeader(event, 'x-forwarded-host') || getHeader(event, 'host') || ''))
+  const host = getEventRequestHost(event)
 
-  setHeader(event, 'Vary', mergeVaryHeader(getHeader(event, 'vary'), ['Host', 'X-Forwarded-Host']))
   setHeader(event, 'Content-Type', 'application/xml; charset=utf-8')
 
   if (!host) {
     throw createError({ statusCode: 400, statusMessage: 'Missing host header' })
+  }
+
+  // Platform preview hosts are noindex, so they advertise no sitemap. Guarding
+  // before the fetch also spares the API a pointless round-trip.
+  if (!isIndexableHost(host, config.public.platformBaseDomain)) {
+    throw createError({ statusCode: 404, statusMessage: 'Sitemap not found' })
   }
 
   try {

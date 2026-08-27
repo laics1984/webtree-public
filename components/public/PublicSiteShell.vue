@@ -28,7 +28,6 @@ import {
   normalizeSchemaNodes,
 } from '~/lib/schema'
 import { buildCssVars } from '~/lib/styles'
-import { mergeVaryHeader } from '~/lib/host'
 import type {
   PublicBlockNode,
   PublicEntityPayload,
@@ -476,11 +475,6 @@ useHead(() => ({
       }]
     : [],
 }))
-
-if (import.meta.server) {
-  const vary = useResponseHeader('vary')
-  vary.value = mergeVaryHeader(vary.value, ['Host', 'X-Forwarded-Host'])
-}
 </script>
 
 <template>
