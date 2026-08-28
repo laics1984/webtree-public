@@ -21,7 +21,7 @@ specific patterns"*:
 | Route | Worker |
 |---|---|
 | `asset.myfowable.com/*` | **none** |
-| `*/*` | `webtree-public` |
+| `*/*` | `fowable-public` |
 
 **This exclusion is not in `wrangler.jsonc`** and cannot be — wrangler only
 manages routes for the Worker it deploys. It lives in the Cloudflare zone
@@ -49,6 +49,34 @@ Token permissions, scoped to the `myfowable.com` zone only
 | Zone → SSL and Certificates | Edit |
 
 The token is passed as a header and is never printed or written to disk.
+
+## Separate: `fix-platform-wildcard.sh`
+
+Not part of the numbered flow. Fixes a distinct, live problem — **tenant platform
+subdomains do not resolve at all**:
+
+```
+gemj8wosnium.public.myfowable.com  ->  no DNS record (authoritative NS returns SOA)
+```
+
+A Worker route does not create DNS. `*.public.myfowable.com/*` filters traffic
+that *arrives* at the zone; if the hostname does not resolve, nothing arrives and
+the route is inert. The fix is one proxied wildcard record pointing at
+`192.0.2.0` (RFC 5737 documentation address, never contacted — the Worker
+intercepts first).
+
+```bash
+./fix-platform-wildcard.sh
+TENANT_HOST=gemj8wosnium.public.myfowable.com ./fix-platform-wildcard.sh   # also verifies a real site
+```
+
+Idempotent; fixes an existing record that is unproxied; verifies against
+Cloudflare's authoritative nameserver rather than a cache. Needs **Zone → DNS →
+Edit** (the audit token only has Read).
+
+This also unblocks custom domains: `EntityDomainService::dnsInstructions()`
+currently tells clients to CNAME to `{identifier}.public.myfowable.com`, which
+does not resolve today.
 
 ## Run order
 
