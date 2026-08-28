@@ -26,7 +26,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 require_token
 
 URL="${1:-}"
-WORKER="${WORKER_NAME:-webtree-public}"
+WORKER="${WORKER_NAME:-fowable-public}"
 
 [ -n "$URL" ] || die \
 "Pass the URL of an object on a THROWAWAY R2 custom domain.
