@@ -16,7 +16,7 @@ zone-level prerequisites that registration depends on.
 
 Worker routes are evaluated against the **request URL**, not the fallback origin.
 A request for `clientdomain.com` arrives with that hostname, so
-`*.public.myfowable.com/*` can never match it however the traffic got here. The
+`*.myfowable.com/*` can never match it however the traffic got here. The
 route has to be `*/*`.
 
 That is safe here only because nothing else on this zone needs a different
@@ -24,8 +24,8 @@ origin:
 
 | Hostname | Served by |
 |---|---|
-| `*.public.myfowable.com` | this Worker (tenant sites) |
-| `public.myfowable.com` | this Worker (fallback origin; never actually contacted) |
+| `*.myfowable.com` | this Worker (tenant sites) |
+| `myfowable.com` | this Worker (fallback origin; never actually contacted) |
 | any registered custom hostname | this Worker |
 
 > ⚠️ **Adding any other hostname to this zone will silently route it here.**
@@ -69,9 +69,9 @@ hostnames.
 | | Script | Changes anything? | What it does |
 |---|---|---|---|
 | 1 | `01-audit.sh` | no | Lists every proxied hostname the `*/*` route captures, plus existing routes, the CNAME target, the platform records and the fallback origin. |
-| 2 | `fix-platform-wildcard.sh` | **yes** | Creates the two proxied placeholder records: `*.public.myfowable.com` (tenant sites resolve) and `public.myfowable.com` (fallback origin can be set). |
+| 2 | `fix-platform-wildcard.sh` | **yes** | Creates the two proxied placeholder records: `*.myfowable.com` (tenant sites resolve) and `myfowable.com` (fallback origin can be set). |
 | 3 | *(deploy the `*/*` route)* | **yes** | Already in `wrangler.jsonc`; merging to `master` is what makes it live. |
-| 4 | `05-fallback-origin.sh` | **yes** | Designates `public.myfowable.com` as the Cloudflare for SaaS fallback origin. Needs Cloudflare for SaaS enabled on the account first. |
+| 4 | `05-fallback-origin.sh` | **yes** | Designates `myfowable.com` as the Cloudflare for SaaS fallback origin. Needs Cloudflare for SaaS enabled on the account first. |
 
 ### Before step 3
 
@@ -81,10 +81,10 @@ on a live client site and on the admin app. `AWS_URL` on the API and
 Deploying `*/*` while anything still fetches `asset.myfowable.com` directly means
 every one of those requests takes a redirect hop instead of hitting the bucket.
 
-### Why `public.myfowable.com` needs its own record
+### Why `myfowable.com` needs its own record
 
 A DNS wildcard never answers for its own parent name, so
-`*.public.myfowable.com` leaves the bare `public.myfowable.com` unresolvable.
+`*.myfowable.com` leaves the bare `myfowable.com` unresolvable.
 `05-fallback-origin.sh` refuses to run without a proxied record for it, and
 Cloudflare will not accept custom hostnames on a zone with no valid fallback
 origin. `fix-platform-wildcard.sh` creates both.

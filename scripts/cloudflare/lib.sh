@@ -8,7 +8,7 @@ CF_API="https://api.cloudflare.com/client/v4"
 
 # Hostnames this platform depends on. Override via env if they ever change.
 ZONE_NAME="${ZONE_NAME:-myfowable.com}"
-PLATFORM_BASE="${PLATFORM_BASE:-public.myfowable.com}"
+PLATFORM_BASE="${PLATFORM_BASE:-myfowable.com}"
 ASSET_HOST="${ASSET_HOST:-asset.myfowable.com}"
 
 STATE_DIR="${STATE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.state}"

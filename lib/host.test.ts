@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { isLocalPlatformRequestHost, isPlatformRequestHost } from '~/lib/host'
 
-const PROD_BASE = 'public.myfowable.com'
-const DEV_BASE = 'public.localhost:3000'
+const PROD_BASE = 'myfowable.com'
+const DEV_BASE = 'localhost:3000'
 
 describe('isPlatformRequestHost', () => {
   it('matches a single label beneath the production base domain', () => {
-    expect(isPlatformRequestHost('acme.public.myfowable.com', PROD_BASE)).toBe(true)
+    expect(isPlatformRequestHost('acme.myfowable.com', PROD_BASE)).toBe(true)
   })
 
   it('matches a single label beneath the local development base domain', () => {
-    expect(isPlatformRequestHost('acme.public.localhost:3000', DEV_BASE)).toBe(true)
+    expect(isPlatformRequestHost('acme.localhost:3000', DEV_BASE)).toBe(true)
   })
 
   it('rejects client custom domains', () => {
@@ -23,12 +23,12 @@ describe('isPlatformRequestHost', () => {
   })
 
   it('rejects hosts more than one label beneath the base domain', () => {
-    expect(isPlatformRequestHost('a.b.public.myfowable.com', PROD_BASE)).toBe(false)
+    expect(isPlatformRequestHost('a.b.myfowable.com', PROD_BASE)).toBe(false)
   })
 
   it('rejects a look-alike domain that merely ends with the base name', () => {
-    expect(isPlatformRequestHost('acme.notpublic.myfowable.com', PROD_BASE)).toBe(false)
-    expect(isPlatformRequestHost('evilpublic.myfowable.com', PROD_BASE)).toBe(false)
+    expect(isPlatformRequestHost('acme.notmyfowable.com', PROD_BASE)).toBe(false)
+    expect(isPlatformRequestHost('evilmyfowable.com', PROD_BASE)).toBe(false)
   })
 
   it('rejects a port mismatch against a ported base domain', () => {
@@ -40,20 +40,20 @@ describe('isPlatformRequestHost', () => {
   })
 
   it('is case and decorator insensitive', () => {
-    expect(isPlatformRequestHost('https://ACME.Public.MyFowable.com/x', PROD_BASE)).toBe(true)
+    expect(isPlatformRequestHost('https://ACME.myfowable.com/x', PROD_BASE)).toBe(true)
   })
 
   it('rejects empty input on either side', () => {
     expect(isPlatformRequestHost('', PROD_BASE)).toBe(false)
-    expect(isPlatformRequestHost('acme.public.myfowable.com', '')).toBe(false)
+    expect(isPlatformRequestHost('acme.myfowable.com', '')).toBe(false)
     expect(isPlatformRequestHost(null, null)).toBe(false)
   })
 })
 
 describe('isLocalPlatformRequestHost', () => {
   it('stays restricted to local base domains so canonical resolution is unchanged', () => {
-    expect(isLocalPlatformRequestHost('acme.public.localhost:3000', DEV_BASE)).toBe(true)
-    expect(isLocalPlatformRequestHost('acme.public.myfowable.com', PROD_BASE)).toBe(false)
+    expect(isLocalPlatformRequestHost('acme.localhost:3000', DEV_BASE)).toBe(true)
+    expect(isLocalPlatformRequestHost('acme.myfowable.com', PROD_BASE)).toBe(false)
   })
 
   it('rejects the bare local base domain', () => {
@@ -61,7 +61,7 @@ describe('isLocalPlatformRequestHost', () => {
   })
 
   it('rejects non-platform local hosts', () => {
-    expect(isLocalPlatformRequestHost('a.b.public.localhost:3000', DEV_BASE)).toBe(false)
+    expect(isLocalPlatformRequestHost('a.b.localhost:3000', DEV_BASE)).toBe(false)
     expect(isLocalPlatformRequestHost('clientdomain.test', DEV_BASE)).toBe(false)
   })
 })

@@ -7,7 +7,7 @@ describe('resolveHomepageFallbackPath', () => {
       resolveHomepageFallbackPath({
         siteKey: 'legacy-site-key',
         publicIdentifier: 'public-identifier',
-        resolvedHost: 'public-identifier.public.localhost:3000',
+        resolvedHost: 'public-identifier.localhost:3000',
         routes: [
           {
             path: '/legacy-site-key',
@@ -29,7 +29,7 @@ describe('resolveHomepageFallbackPath', () => {
       resolveHomepageFallbackPath({
         siteKey: 'legacy-site-key',
         publicIdentifier: '',
-        resolvedHost: 'legacy-site-key.public.localhost:3000',
+        resolvedHost: 'legacy-site-key.localhost:3000',
         routes: [
           {
             path: '/legacy-site-key',

@@ -30,7 +30,7 @@ describe('resolveAssetHostRedirect', () => {
 
   it('leaves every other host alone', () => {
     expect(resolveAssetHostRedirect(ASSET_HOST, '/a.png')).toBeNull()
-    expect(resolveAssetHostRedirect('acme.public.myfowable.com', '/')).toBeNull()
+    expect(resolveAssetHostRedirect('acme.myfowable.com', '/')).toBeNull()
     expect(resolveAssetHostRedirect('clientdomain.com', '/')).toBeNull()
     // A look-alike must not match: the check is on the whole hostname.
     expect(resolveAssetHostRedirect('notasset.myfowable.com', '/')).toBeNull()

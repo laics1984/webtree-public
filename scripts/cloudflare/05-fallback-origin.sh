@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# MUTATES. Designates public.myfowable.com as the Cloudflare for SaaS fallback
+# MUTATES. Designates myfowable.com as the Cloudflare for SaaS fallback
 # origin — where traffic for registered custom hostnames is sent.
 #
 # With a Worker serving the zone the origin is never actually contacted: the

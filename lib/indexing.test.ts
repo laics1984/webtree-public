@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { AI_CRAWLER_DISALLOW_POLICY, NOINDEX_ROBOTS, isIndexableHost } from '~/lib/indexing'
 
-const PROD_BASE = 'public.myfowable.com'
-const DEV_BASE = 'public.localhost:3000'
+const PROD_BASE = 'myfowable.com'
+const DEV_BASE = 'localhost:3000'
 
 describe('isIndexableHost', () => {
   it('allows client custom domains', () => {
@@ -11,8 +11,8 @@ describe('isIndexableHost', () => {
   })
 
   it('blocks per-site platform subdomains', () => {
-    expect(isIndexableHost('acme.public.myfowable.com', PROD_BASE)).toBe(false)
-    expect(isIndexableHost('acme.public.localhost:3000', DEV_BASE)).toBe(false)
+    expect(isIndexableHost('acme.myfowable.com', PROD_BASE)).toBe(false)
+    expect(isIndexableHost('acme.localhost:3000', DEV_BASE)).toBe(false)
   })
 
   it('blocks the bare platform base domain', () => {

@@ -113,10 +113,10 @@ export function preferRequestHost(candidateHost?: string | null, requestHost?: s
 
 /**
  * True when the request arrives on a per-site platform subdomain — exactly one
- * label beneath the platform base domain (`acme.public.myfowable.com`,
- * `acme.public.localhost:3000`) — rather than a client custom domain.
+ * label beneath the platform base domain (`acme.myfowable.com`,
+ * `acme.localhost:3000`) — rather than a client custom domain.
  *
- * Deeper hosts (`a.b.public.myfowable.com`) and the bare base domain are not
+ * Deeper hosts (`a.b.myfowable.com`) and the bare base domain are not
  * per-site platform subdomains.
  */
 export function isPlatformRequestHost(requestHost?: string | null, platformBaseDomain?: string | null): boolean {
