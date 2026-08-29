@@ -159,10 +159,27 @@
     cursor: not-allowed;
   }
 
+  /* A self-surfaced control: it paints its own pill, so it states its own ink
+     in the same rule rather than leaving a caller to guess one — the same pair
+     `.wt-ui-sheet` below states. --builder-color-text is 7:1 against
+     --builder-color-background by construction (the generator builds every
+     palette's text with _ensure_contrast_against(min_ratio=7), see
+     site-generator theme.py), so this reads on light and dark sites alike, over
+     any hero, at every scroll position.
+
+     It used to declare a background and no colour, and MenuBlock.vue then
+     measured contrast against a hard-coded '#ffffff' — true of nothing here.
+     On a dark palette that produced near-black ink on a near-black pill the
+     moment the header solidified. Anything that repaints one of these two must
+     repaint the other in the same place, or the ink is guessing again. */
   .wt-ui-menu-button {
     border: 1px solid rgba(148, 163, 184, 0.35);
     border-radius: 999px;
     background: var(--builder-color-background, rgba(255, 255, 255, 0.96));
+    color: var(--builder-color-text, #0f172a);
+    /* The transparent header's `.wt-header-ink` text-shadow INHERITS into the
+       pill (PublicSiteShell.vue); a self-surfaced control needs none. */
+    text-shadow: none;
     box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
   }
 

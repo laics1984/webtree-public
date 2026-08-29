@@ -101,7 +101,11 @@ else
 fi
 
 head1 "Next"
-dim "If the hostname list above holds anything besides the sites Worker and"
-dim "${ASSET_HOST}, stop and account for it before continuing."
+dim "The Worker holds a zone-wide route, so EVERY proxied hostname listed above is"
+dim "served by it. That is fine for the platform wildcard and its base domain; it is"
+dim "not fine for anything that needs a different origin — an R2 custom domain, a"
+dim "redirect, another service. If the list holds one, stop and move it to a"
+dim "different zone before it silently starts serving this Worker instead."
 say ""
-say "  ./02-baseline.sh   capture how assets serve today (do this BEFORE any change)"
+say "  ./fix-platform-wildcard.sh   make the platform hostnames resolvable"
+say "  ./05-fallback-origin.sh      designate ${PLATFORM_BASE} as the fallback origin"

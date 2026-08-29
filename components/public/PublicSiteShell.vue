@@ -613,9 +613,17 @@ body {
    never the CTA button, which keeps its own solid chrome) switch to white ink.
    !important is required to beat the generator's inline `color`; the rule
    vanishes with the class on solidify, so the inline colors return with the
-   200ms header transition. */
+   200ms header transition.
+
+   `wt-self-ink` is the counterpart marker, and the one subtree this skips: the
+   header colours a `wt-header-ink` element, a `wt-self-ink` element colours
+   itself. It marks a descendant that paints its OWN surface — the mobile menu
+   pill, which is opaque in every header phase — so it is already legible
+   against its own background and the overlay's white would only fight the pair
+   that surface states. Keep this selector identical to the builder's copy in
+   src/index.css (.wt-header-overlay-transparent). */
 .wt-page-header--overlay .wt-header-ink,
-.wt-page-header--overlay .wt-header-ink * {
+.wt-page-header--overlay .wt-header-ink *:not(.wt-self-ink):not(.wt-self-ink *) {
   color: #ffffff !important;
 }
 

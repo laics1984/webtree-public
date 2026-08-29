@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
 #
-# Creates the proxied wildcard DNS record that makes tenant platform subdomains
-# resolvable:  *.public.myfowable.com -> A 192.0.2.0 (proxied)
+# Creates the two proxied DNS records the platform cannot work without:
 #
-# Independent of the numbered custom-domain flow — this fixes a separate, live
-# problem: without this record no tenant site is reachable on its platform
-# subdomain at all.
+#   *.public.myfowable.com -> A 192.0.2.0 (proxied)   tenant sites resolve
+#     public.myfowable.com -> A 192.0.2.0 (proxied)   fallback origin can be set
 #
-# A Worker route does not create DNS. The route `*.public.myfowable.com/*`
-# filters traffic that ARRIVES at the zone; if the hostname does not resolve,
-# nothing ever arrives and the route is inert.
+# Independent of the numbered custom-domain flow, but a prerequisite for it.
+#
+# A Worker route does not create DNS. A route filters traffic that ARRIVES at the
+# zone; if the hostname does not resolve, nothing ever arrives and the route is
+# inert.
+#
+# Both records are needed, and a wildcard does not cover the second one: DNS
+# wildcards never answer for their own parent name, so `*.public.myfowable.com`
+# leaves `public.myfowable.com` itself unresolvable. That bare name is what
+# 05-fallback-origin.sh designates as the Cloudflare for SaaS fallback origin,
+# and that script refuses to run until a proxied record for it exists.
 #
 # 192.0.2.0 is TEST-NET-1 (RFC 5737) — reserved for documentation and never
 # routable. It is never contacted: the Worker intercepts before origin
-# resolution. It exists solely to make the name resolvable and give the route
+# resolution. It exists solely to make the names resolvable and give the route
 # something to match.
 #
 # Token needs:  Zone -> DNS -> Edit   (the audit-only token has DNS: Read)
@@ -21,89 +27,121 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 require_token
 
-RECORD_NAME="*.${PLATFORM_BASE}"          # *.public.myfowable.com
 PLACEHOLDER_IP="192.0.2.0"
 NS="kim.ns.cloudflare.com"                # ask authoritative; skip all caching
 PROBE_HOST="wildcardcheck.${PLATFORM_BASE}"
 
 ZID=$(zone_id)
 say "Zone    ${C_BLD}${ZONE_NAME}${C_OFF}  (${ZID})"
-say "Record  ${RECORD_NAME}"
 
-# --- current state ----------------------------------------------------------
+# ensure_proxied_a_record NAME PURPOSE
+#
+# Idempotent: creates the record if absent, flips it to proxied if it exists
+# grey-clouded, and leaves a correct one untouched. Never overwrites content —
+# an existing record pointing somewhere deliberate is the operator's business.
+ensure_proxied_a_record() {
+  local name="$1" purpose="$2"
+  local query existing e_id e_type e_content e_proxied created
 
-head1 "Checking for an existing record"
+  head1 "Record  ${name}"
 
-existing=$(cf_api GET "/zones/${ZID}/dns_records?name=$(printf '%s' "$RECORD_NAME" | sed 's/\*/%2A/')" \
-  | jq -r '.[0] // empty')
+  # `*` has to be percent-encoded in the query string or the API never matches.
+  query=$(printf '%s' "$name" | sed 's/\*/%2A/')
+  existing=$(cf_api GET "/zones/${ZID}/dns_records?name=${query}" | jq -r '.[0] // empty')
 
-if [ -n "$existing" ]; then
-  e_id=$(jq -r '.id' <<<"$existing")
-  e_type=$(jq -r '.type' <<<"$existing")
-  e_content=$(jq -r '.content' <<<"$existing")
-  e_proxied=$(jq -r '.proxied' <<<"$existing")
+  if [ -n "$existing" ]; then
+    e_id=$(jq -r '.id' <<<"$existing")
+    e_type=$(jq -r '.type' <<<"$existing")
+    e_content=$(jq -r '.content' <<<"$existing")
+    e_proxied=$(jq -r '.proxied' <<<"$existing")
 
-  dim "type=${e_type}  content=${e_content}  proxied=${e_proxied}"
+    dim "type=${e_type}  content=${e_content}  proxied=${e_proxied}"
 
-  if [ "$e_proxied" = "true" ]; then
-    ok "Already exists and is proxied — nothing to create."
-    dim "If tenant subdomains still fail, the cause is elsewhere; run ./01-audit.sh."
-  else
+    if [ "$e_proxied" = "true" ]; then
+      ok "Already exists and is proxied — nothing to do."
+      return 0
+    fi
+
     bad "Exists but is NOT proxied."
     dim "An unproxied record resolves to ${e_content} directly, so Cloudflare never"
     dim "sees the request and the Worker cannot run."
     confirm "Set record ${e_id} to proxied?"
     cf_api PATCH "/zones/${ZID}/dns_records/${e_id}" '{"proxied":true}' >/dev/null
     ok "Now proxied."
+    return 0
   fi
-else
+
   dim "No record found."
   confirm "About to create a DNS record on zone ${ZONE_NAME}:
 
     type:     A
-    name:     ${RECORD_NAME}
+    name:     ${name}
     content:  ${PLACEHOLDER_IP}   (reserved documentation address, never contacted)
     proxied:  yes
 
-This makes every tenant subdomain resolvable and lets the existing Worker route
-serve them. It cannot affect ${ASSET_HOST} or any hostname that already has its
-own record — a wildcard only answers names with no explicit record."
+${purpose}"
 
   created=$(cf_api POST "/zones/${ZID}/dns_records" "$(jq -nc \
-    --arg n "$RECORD_NAME" --arg c "$PLACEHOLDER_IP" \
-    '{type:"A", name:$n, content:$c, proxied:true, comment:"Placeholder so tenant platform subdomains resolve; served by the Worker route, origin never contacted."}')")
+    --arg n "$name" --arg c "$PLACEHOLDER_IP" \
+    '{type:"A", name:$n, content:$c, proxied:true, comment:"Placeholder so platform hostnames resolve; served by the Worker route, origin never contacted."}')")
   ok "Created (id $(jq -r '.id' <<<"$created"))"
-fi
+}
 
-# --- verify: does the name actually resolve now? ----------------------------
+# --- the two records --------------------------------------------------------
+
+ensure_proxied_a_record "*.${PLATFORM_BASE}" \
+"This makes every tenant subdomain resolvable and lets the Worker route serve
+them. It cannot affect ${ASSET_HOST} or any hostname that already has its own
+record — a wildcard only answers names with no explicit record."
+
+ensure_proxied_a_record "${PLATFORM_BASE}" \
+"This is the Cloudflare for SaaS fallback origin. The wildcard above does not
+cover it: a DNS wildcard never answers for its own parent name. Without this
+record 05-fallback-origin.sh cannot designate it, and no custom hostname on this
+zone is valid."
+
+# --- verify: do the names actually resolve now? -----------------------------
 
 head1 "Verifying against the authoritative nameserver"
 dim "Querying ${NS} directly, so no resolver cache can mislead us."
 
-resolved=""
-for i in $(seq 1 20); do
-  resolved=$(dig +short @"$NS" "$PROBE_HOST" 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
-  [ -n "$resolved" ] && break
-  printf '  %swaiting (%d/20)%s\r' "$C_DIM" "$i" "$C_OFF"
-  sleep 3
-done
-printf '                                   \r'
+# verify_resolves HOST LABEL -- returns 1 if it never answers
+verify_resolves() {
+  local host="$1" label="$2" resolved="" i
 
-if [ -z "$resolved" ]; then
-  bad "${PROBE_HOST} still does not resolve."
-  dim "Cloudflare accepted the record but is not answering for it yet. Wait a"
-  dim "minute and re-run; if it persists, check the record in the dashboard."
-  exit 1
-fi
-ok "${PROBE_HOST} -> ${resolved}"
+  for i in $(seq 1 20); do
+    resolved=$(dig +short @"$NS" "$host" 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
+    [ -n "$resolved" ] && break
+    printf '  %s%s: waiting (%d/20)%s\r' "$C_DIM" "$label" "$i" "$C_OFF"
+    sleep 3
+  done
+  printf '                                             \r'
 
-case "$resolved" in
-  *"$PLACEHOLDER_IP"*)
-    bad "Resolving to the placeholder address itself — the record is NOT proxied."
-    die "Set it to Proxied (orange cloud); the Worker cannot run on a grey-cloud record."
-    ;;
-esac
-ok "Resolving to Cloudflare (proxied) — the Worker route can now match."
+  if [ -z "$resolved" ]; then
+    bad "${host} still does not resolve."
+    dim "Cloudflare accepted the record but is not answering for it yet. Wait a"
+    dim "minute and re-run; if it persists, check the record in the dashboard."
+    return 1
+  fi
+
+  ok "${host} -> ${resolved}"
+
+  case "$resolved" in
+    *"$PLACEHOLDER_IP"*)
+      bad "Resolving to the placeholder address itself — the record is NOT proxied."
+      die "Set it to Proxied (orange cloud); the Worker cannot run on a grey-cloud record."
+      ;;
+  esac
+
+  return 0
+}
+
+failed=0
+verify_resolves "$PROBE_HOST" "wildcard" || failed=1
+verify_resolves "$PLATFORM_BASE" "fallback origin" || failed=1
+[ "$failed" -eq 0 ] || exit 1
+
+ok "Both resolving to Cloudflare (proxied) — the Worker route can now match."
 
 # --- verify: does a tenant subdomain actually serve? ------------------------
 
@@ -131,7 +169,6 @@ else
 fi
 
 head1 "Next"
-dim "Tenant platform subdomains should now work. The custom-domain rollout is a"
-dim "separate track:"
-say "  ./01-audit.sh      inventory the zone"
-say "  ./00-rehearse.sh   prove the R2 exclusion mechanism safely"
+dim "Platform hostnames now resolve. Continue the custom-domain rollout:"
+say "  ./01-audit.sh             inventory the zone before widening the route"
+say "  ./05-fallback-origin.sh   designate ${PLATFORM_BASE} as the fallback origin"
