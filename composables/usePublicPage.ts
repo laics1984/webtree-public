@@ -1,26 +1,7 @@
 import type { PublicPageResponse, PublicRoutesResponse, PublicSchemaTree, SitePayload } from '~/types/public'
 import { fetchPublicPage, fetchPublicRoutes, fetchPublicSite } from '~/lib/api'
 import { getRequestHost } from '~/lib/host'
-
-function getStatusCode(error: unknown): number {
-  if (!error || typeof error !== 'object') {
-    return 500
-  }
-
-  const statusCode = 'statusCode' in error ? Number(error.statusCode) : NaN
-  if (!Number.isNaN(statusCode) && statusCode > 0) {
-    return statusCode
-  }
-
-  if ('data' in error && error.data && typeof error.data === 'object' && 'statusCode' in error.data) {
-    const nestedStatusCode = Number(error.data.statusCode)
-    if (!Number.isNaN(nestedStatusCode) && nestedStatusCode > 0) {
-      return nestedStatusCode
-    }
-  }
-
-  return 500
-}
+import { getErrorStatusCode as getStatusCode } from '~/lib/httpError'
 
 function getErrorMessage(error: unknown): string | null {
   if (!error || typeof error !== 'object') {
