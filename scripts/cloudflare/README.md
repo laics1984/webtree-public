@@ -3,33 +3,41 @@
 Operational scripts for putting client custom domains onto this Worker via
 Cloudflare for SaaS. Run once, in order, by a human with zone access.
 
-Custom domains do not reach this Worker until two things exist: a **registered
-custom hostname** on the `myfowable.com` zone, and a **Worker route that matches
-it**. `*.public.myfowable.com/*` cannot match `clientdomain.com`, so the route
-has to widen to `*/*` — which is why the asset exclusion below matters.
+A client domain reaches this Worker only when **both** of these are true:
 
-## Why the exclusion route exists
+1. it is registered as a **custom hostname** on the `myfowable.com` zone, and
+2. a **Worker route matches it**.
 
-> ⚠️ **`asset.myfowable.com` is an R2 custom domain on the same zone.**
-> Cloudflare: *"Routes … take precedence if configured on the same hostname."*
-> A bare `*/*` route would intercept every asset request and hand it to the
-> Worker instead of the bucket — every image on every client site.
+The API does (1) automatically — see `EntityDomainService` and
+`DomainConnectionReconciler` in `webtree-cms-api`. These scripts do (2), plus the
+zone-level prerequisites that registration depends on.
 
-The fix is a route with **no Worker attached**, which *"acts to negate any less
-specific patterns"*:
+## Why the route is zone-wide
 
-| Route | Worker |
+Worker routes are evaluated against the **request URL**, not the fallback origin.
+A request for `clientdomain.com` arrives with that hostname, so
+`*.public.myfowable.com/*` can never match it however the traffic got here. The
+route has to be `*/*`.
+
+That is safe here only because nothing else on this zone needs a different
+origin:
+
+| Hostname | Served by |
 |---|---|
-| `asset.myfowable.com/*` | **none** |
-| `*/*` | `fowable-public` |
+| `*.public.myfowable.com` | this Worker (tenant sites) |
+| `public.myfowable.com` | this Worker (fallback origin; never actually contacted) |
+| any registered custom hostname | this Worker |
 
-**This exclusion is not in `wrangler.jsonc`** and cannot be — wrangler only
-manages routes for the Worker it deploys. It lives in the Cloudflare zone
-config, created by `03-exclusion-route.sh`. If you are wondering why assets
-still work under a `*/*` route, that route is the answer. Do not delete it.
+> ⚠️ **Adding any other hostname to this zone will silently route it here.**
+> Run `./01-audit.sh` before you do. If it needs a different origin — an R2
+> custom domain, a redirect, another service — put it on a different zone.
 
-`asset.fowable.com` is also an R2 custom domain but sits on the `fowable.com`
-zone, out of reach of a `myfowable.com` route. It needs nothing.
+Assets used to make this hard: `asset.myfowable.com` was an R2 custom domain on
+*this* zone, and a route takes precedence over an R2 custom domain on the same
+hostname. They now serve from `asset.fowable.com` on the `fowable.com` zone,
+out of reach of any `myfowable.com` route. `server/middleware/assetHost.ts` 301s
+anything still asking for the old host, so cached and hard-coded URLs keep
+working.
 
 ## Setup
 
@@ -44,122 +52,66 @@ Token permissions, scoped to the `myfowable.com` zone only
 
 | Permission | Level |
 |---|---|
-| Zone → DNS | Read |
-| Zone → Workers Routes | Edit |
+| Zone → DNS | Edit |
+| Zone → Workers Routes | Read |
 | Zone → SSL and Certificates | Edit |
 
-The token is passed as a header and is never printed or written to disk.
-
-## Separate: `fix-platform-wildcard.sh`
-
-Not part of the numbered flow. Fixes a distinct, live problem — **tenant platform
-subdomains do not resolve at all**:
-
-```
-gemj8wosnium.public.myfowable.com  ->  no DNS record (authoritative NS returns SOA)
-```
-
-A Worker route does not create DNS. `*.public.myfowable.com/*` filters traffic
-that *arrives* at the zone; if the hostname does not resolve, nothing arrives and
-the route is inert. The fix is one proxied wildcard record pointing at
-`192.0.2.0` (RFC 5737 documentation address, never contacted — the Worker
-intercepts first).
-
-```bash
-./fix-platform-wildcard.sh
-TENANT_HOST=gemj8wosnium.public.myfowable.com ./fix-platform-wildcard.sh   # also verifies a real site
-```
-
-Idempotent; fixes an existing record that is unproxied; verifies against
-Cloudflare's authoritative nameserver rather than a cache. Needs **Zone → DNS →
-Edit** (the audit token only has Read).
-
-This also unblocks custom domains: `EntityDomainService::dnsInstructions()`
-currently tells clients to CNAME to `{identifier}.public.myfowable.com`, which
-does not resolve today.
+The token is passed as a header and is never printed or written to disk. This is
+**not** the token the API uses at runtime — mint that one separately with only
+`Zone → SSL and Certificates: Edit`, since all it ever does is manage custom
+hostnames.
 
 ## Run order
 
 > **`myfowable.com` is production.** There is no staging zone. Scripts marked
-> "changes anything" write to the live zone, so `00-rehearse.sh` exists to prove
-> the mechanism on a disposable hostname before real asset traffic is anywhere
-> near it. Do not skip it.
+> "changes anything" write to the live zone and require typing `yes`.
 
 | | Script | Changes anything? | What it does |
 |---|---|---|---|
-| 0 | `00-rehearse.sh <test-url>` | only a throwaway host | Proves a Worker route intercepts an R2 custom domain, **and** that a no-Worker route restores it. Self-cleaning. |
-| 1 | `01-audit.sh` | no | Lists every proxied hostname a `*/*` route would capture, plus existing routes, the CNAME target, the tenant wildcard, and the fallback origin. |
-| 2 | `02-baseline.sh <asset-url>` | no | Records how a real R2 object serves **before** any change. |
-| 3 | `03-exclusion-route.sh` | **yes** | Creates `asset.myfowable.com/*` → no Worker. Idempotent; reads back and verifies. |
-| 4 | `04-gate.sh` | no | Compares assets against the baseline. **Run again after deploying `*/*` — that run is the one that counts.** |
-| 5 | *(deploy `*/*`)* | **yes** | Edit `wrangler.jsonc`, then deploy. See below. |
-| 6 | `04-gate.sh` | no | The real gate. Fails → pull the route immediately. |
-| 7 | `05-fallback-origin.sh` | **yes** | Designates `public.myfowable.com` as the fallback origin. |
+| 1 | `01-audit.sh` | no | Lists every proxied hostname the `*/*` route captures, plus existing routes, the CNAME target, the platform records and the fallback origin. |
+| 2 | `fix-platform-wildcard.sh` | **yes** | Creates the two proxied placeholder records: `*.public.myfowable.com` (tenant sites resolve) and `public.myfowable.com` (fallback origin can be set). |
+| 3 | *(deploy the `*/*` route)* | **yes** | Already in `wrangler.jsonc`; merging to `master` is what makes it live. |
+| 4 | `05-fallback-origin.sh` | **yes** | Designates `public.myfowable.com` as the Cloudflare for SaaS fallback origin. Needs Cloudflare for SaaS enabled on the account first. |
 
-Mutating scripts print exactly what they will do and require typing `yes`.
+### Before step 3
 
-### Step 0 — the rehearsal
+Assets must already be serving from `asset.fowable.com` — check the network tab
+on a live client site and on the admin app. `AWS_URL` on the API and
+`VITE_ASSET_PUBLIC_URL` in the admin app's deploy workflow are the two knobs.
+Deploying `*/*` while anything still fetches `asset.myfowable.com` directly means
+every one of those requests takes a redirect hop instead of hitting the bucket.
 
-Two assumptions underpin this whole approach, and Cloudflare documents neither
-outright: that a Worker route **intercepts** an R2 custom domain on the same
-zone, and that a no-Worker route **restores** it. Testing them on
-`asset.myfowable.com` would mean risking every client's images on a hypothesis.
+### Why `public.myfowable.com` needs its own record
 
-Instead, connect a disposable custom domain to any bucket with a public object:
+A DNS wildcard never answers for its own parent name, so
+`*.public.myfowable.com` leaves the bare `public.myfowable.com` unresolvable.
+`05-fallback-origin.sh` refuses to run without a proxied record for it, and
+Cloudflare will not accept custom hostnames on a zone with no valid fallback
+origin. `fix-platform-wildcard.sh` creates both.
 
-```
-R2 -> bucket -> Settings -> Custom Domains -> Connect Domain
-   -> assettest.myfowable.com
-```
+The fallback origin is a formality here: the Worker intercepts before origin
+resolution, so `192.0.2.0` is never contacted. It still has to exist.
 
-Then:
-
-```bash
-./00-rehearse.sh https://assettest.myfowable.com/path/to/object.jpg
-```
-
-It attaches a Worker route, checks whether serving changed, swaps to a no-Worker
-route, checks whether it recovered, and deletes its own route on exit — including
-after a failure. It refuses to run against `asset.myfowable.com` or any host
-outside the zone. Remove the throwaway custom domain afterwards.
-
-A `BOTH ASSUMPTIONS HOLD` verdict means the plan is sound. Anything else is told
-to you plainly, with what to do instead.
-
-### Step 5 — the `*/*` route
-
-Only after `04-gate.sh` passes at step 4:
-
-```jsonc
-"routes": [
-  { "pattern": "*/*", "zone_name": "myfowable.com" }
-]
-```
-
-This repo deploys on push to `master`, so merging is what makes it live. Have
-`04-gate.sh` ready to run the moment it deploys.
-
-## If the gate fails
-
-```
-1. Remove the */* route  — restores asset serving immediately
-2. Re-run ./04-gate.sh   — confirm assets recovered
-3. Change approach       — serve assets from asset.fowable.com (different zone,
-                           no exclusion needed), or move the Worker to its own zone
-```
-
-Route specificity and no-Worker negation are both documented. That a no-Worker
-exclusion cleanly restores *R2 custom domain* serving is an inference — which is
-precisely why it is gated rather than assumed.
+It also cannot point at `fowable.com` — Cloudflare requires the fallback origin
+to be a hostname on the same zone as the custom hostnames.
 
 ## After all of this passes
 
-Register one throwaway custom hostname by hand, CNAME a test domain to
-`public.myfowable.com`, and confirm the Worker serves it over HTTPS **and** that
-`asset.myfowable.com` still serves assets. Only then does the backend work
-(automatic hostname registration in `webtree-cms-api`) begin.
+Register one throwaway custom hostname by hand, CNAME a test domain to a tenant
+platform host, and confirm the Worker serves it over HTTPS. That is what proves
+Error 1014 is gone. Only then point the API at the zone by setting
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ZONE_ID`.
+
+## If a client domain 1014s after all this
+
+`1014` means Cloudflare saw a CNAME into a zone it does not think owns that
+hostname — i.e. the custom hostname is not registered. Check, in order:
+
+1. the hostname exists under SSL/TLS → Custom Hostnames in the dashboard
+2. its status is `active`, not `pending` or `blocked`
+3. `entity_custom_hostnames.cloudflare_id` is populated for that host in the API
+4. `php artisan domains:reconcile --entity=<token>` to force a refresh
 
 ## State
 
-`.state/` holds the asset baseline and the created route id. Local only, not
-committed. Delete it to start over.
+`.state/` is local only and not committed. Delete it to start over.

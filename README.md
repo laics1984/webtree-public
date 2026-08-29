@@ -50,22 +50,27 @@ Browsers and CDNs route by host, not by entity ID. The app sends the current hos
 
 ## Production routing (Cloudflare)
 
-`wrangler.jsonc` does not tell the whole story. Two things about the live routing
-are configured in the Cloudflare zone and are invisible from this repo:
+`wrangler.jsonc` holds a **zone-wide** route: `*/*` on `myfowable.com`. It has to
+be that broad. Worker routes match the request URL, and a Cloudflare for SaaS
+custom hostname arrives under the *client's* domain — `clientdomain.com`, which
+no `*.public.myfowable.com/*` pattern can ever match.
 
-1. **An asset exclusion route.** `asset.myfowable.com` is an R2 custom domain on
-   the same zone as this Worker. Cloudflare routes take precedence over custom
-   domains on the same hostname, so a broad Worker route would intercept every
-   asset request. A route for `asset.myfowable.com/*` with **no Worker attached**
-   negates that. **Do not delete it** — assets break the moment it goes.
-2. **Custom hostnames.** Client domains reach this Worker only once registered as
-   Cloudflare for SaaS custom hostnames on the `myfowable.com` zone. A CNAME
-   alone is not enough: DNS gets the request to Cloudflare, but registration is
-   what tells Cloudflare this Worker should serve it.
+Two consequences worth knowing before touching the zone:
 
-Both are set up by the scripts in [`scripts/cloudflare/`](scripts/cloudflare/),
-which also document the run order and the asset-serving gate that must pass
-before the Worker route is widened.
+1. **Every proxied hostname on `myfowable.com` is served by this Worker.** Adding
+   one that needs a different origin — an R2 custom domain, a redirect, another
+   service — will silently start returning this app instead. Put it on a
+   different zone, or run `scripts/cloudflare/01-audit.sh` first and think hard.
+   This is why assets live on `asset.fowable.com` (the `fowable.com` zone) rather
+   than `asset.myfowable.com`; `server/middleware/assetHost.ts` 301s the old host
+   so cached and hard-coded URLs keep working.
+2. **A CNAME alone does not connect a client domain.** DNS gets the request to
+   Cloudflare; *registration* as a custom hostname is what tells Cloudflare this
+   zone should serve it. Without it the visitor gets Error 1014. The API
+   registers them automatically (`EntityDomainService` →
+   `DomainConnectionReconciler` in `webtree-cms-api`); the zone-level
+   prerequisites are set up by the scripts in
+   [`scripts/cloudflare/`](scripts/cloudflare/).
 
 ## Indexing policy
 
