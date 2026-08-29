@@ -35,7 +35,7 @@ export default defineNuxtConfig({
     publicApiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://public-api.localhost',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://public-api.localhost',
-      platformBaseDomain: process.env.NUXT_PUBLIC_PLATFORM_BASE_DOMAIN || 'public.localhost:3000',
+      platformBaseDomain: process.env.NUXT_PUBLIC_PLATFORM_BASE_DOMAIN || 'localhost:3000',
       siteProtocol: defaultSiteProtocol
     }
   },

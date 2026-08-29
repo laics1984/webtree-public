@@ -2,8 +2,8 @@
 #
 # Creates the two proxied DNS records the platform cannot work without:
 #
-#   *.public.myfowable.com -> A 192.0.2.0 (proxied)   tenant sites resolve
-#     public.myfowable.com -> A 192.0.2.0 (proxied)   fallback origin can be set
+#   *.myfowable.com -> A 192.0.2.0 (proxied)   tenant sites resolve
+#     myfowable.com -> A 192.0.2.0 (proxied)   fallback origin can be set
 #
 # Independent of the numbered custom-domain flow, but a prerequisite for it.
 #
@@ -12,8 +12,8 @@
 # inert.
 #
 # Both records are needed, and a wildcard does not cover the second one: DNS
-# wildcards never answer for their own parent name, so `*.public.myfowable.com`
-# leaves `public.myfowable.com` itself unresolvable. That bare name is what
+# wildcards never answer for their own parent name, so `*.myfowable.com`
+# leaves `myfowable.com` itself unresolvable. That bare name is what
 # 05-fallback-origin.sh designates as the Cloudflare for SaaS fallback origin,
 # and that script refuses to run until a proxied record for it exists.
 #

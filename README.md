@@ -2,7 +2,7 @@
 
 ## What this app assumes
 - Public requests arrive by host/domain.
-- Local platform domain pattern is `{public_identifier}.public.localhost:3000`.
+- Local platform domain pattern is `{public_identifier}.localhost:3000`.
 - Production platform domain pattern stays configurable through `NUXT_PUBLIC_PLATFORM_BASE_DOMAIN`.
 - Public API endpoints:
   - `GET /api/public/page?host={host}&path={path}`
@@ -12,15 +12,15 @@
 
 ## Local development
 Use the same platform base-domain on both apps:
-- `webtree-cms-api`: `PUBLIC_PLATFORM_BASE_DOMAIN=public.localhost:3000`
+- `webtree-cms-api`: `PUBLIC_PLATFORM_BASE_DOMAIN=localhost:3000`
 - `webtree-public`:
   - `NUXT_PUBLIC_API_BASE=http://public-api.localhost`
-  - `NUXT_PUBLIC_PLATFORM_BASE_DOMAIN=public.localhost:3000`
+  - `NUXT_PUBLIC_PLATFORM_BASE_DOMAIN=localhost:3000`
   - `NUXT_PUBLIC_SITE_PROTOCOL=http`
   - `NUXT_DEV_HOST=0.0.0.0`
   - `NUXT_DEV_PORT=3000`
 
-Then run `npm run dev` and open `http://[public_identifier].public.localhost:3000`.
+Then run `npm run dev` and open `http://[public_identifier].localhost:3000`.
 
 ## Why host is still used
 Browsers and CDNs route by host, not by entity ID. The app sends the current host to the public API and the backend resolves:
@@ -53,7 +53,7 @@ Browsers and CDNs route by host, not by entity ID. The app sends the current hos
 `wrangler.jsonc` holds a **zone-wide** route: `*/*` on `myfowable.com`. It has to
 be that broad. Worker routes match the request URL, and a Cloudflare for SaaS
 custom hostname arrives under the *client's* domain — `clientdomain.com`, which
-no `*.public.myfowable.com/*` pattern can ever match.
+no `*.myfowable.com/*` pattern can ever match.
 
 Two consequences worth knowing before touching the zone:
 
@@ -74,7 +74,7 @@ Two consequences worth knowing before touching the zone:
 
 ## Indexing policy
 
-Platform preview hosts (`*.public.myfowable.com`) are never indexed; client
+Platform preview hosts (`*.myfowable.com`) are never indexed; client
 custom domains are. One predicate — `isIndexableHost` in [`lib/indexing.ts`](lib/indexing.ts) —
 drives all four layers: the `X-Robots-Tag` header in
 [`server/middleware/indexing.ts`](server/middleware/indexing.ts), the `robots`
@@ -82,7 +82,7 @@ meta tag, canonical URLs, and `robots.txt` / `sitemap.xml`. AI crawlers, which
 ignore `noindex`, are blocked by `Disallow` on preview hosts instead.
 
 ## Local host behavior
-When `NUXT_PUBLIC_PLATFORM_BASE_DOMAIN` points at a `.localhost` platform host, the app preserves the incoming request host for canonical, sitemap, and robots URLs. That keeps local testing stable on `public_identifier.public.localhost:3000` even if the backend also knows about a separate fallback identifier.
+When `NUXT_PUBLIC_PLATFORM_BASE_DOMAIN` points at a `.localhost` platform host, the app preserves the incoming request host for canonical, sitemap, and robots URLs. That keeps local testing stable on `public_identifier.localhost:3000` even if the backend also knows about a separate fallback identifier.
 
 ## Run
 ```bash

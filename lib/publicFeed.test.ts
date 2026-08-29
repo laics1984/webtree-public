@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { buildRobotsTxt, resolvePublicHost } from '~/lib/publicFeed'
 import type { PublicSiteResponse, SiteDefaults } from '~/types/public'
 
-const PROD_BASE = 'public.myfowable.com'
-const PLATFORM_HOST = 'acme.public.myfowable.com'
+const PROD_BASE = 'myfowable.com'
+const PLATFORM_HOST = 'acme.myfowable.com'
 const CUSTOM_HOST = 'clientdomain.com'
 
 function siteResponse(defaults: SiteDefaults = {}, canonicalHost: string | null = CUSTOM_HOST): PublicSiteResponse {
@@ -96,8 +96,8 @@ describe('resolvePublicHost', () => {
   })
 
   it('keeps local development requests on their own host', () => {
-    const entity = { resolvedHost: 'acme.public.localhost:3000', canonicalHost: CUSTOM_HOST }
-    expect(resolvePublicHost(entity, 'acme.public.localhost:3000', 'public.localhost:3000'))
-      .toBe('acme.public.localhost:3000')
+    const entity = { resolvedHost: 'acme.localhost:3000', canonicalHost: CUSTOM_HOST }
+    expect(resolvePublicHost(entity, 'acme.localhost:3000', 'localhost:3000'))
+      .toBe('acme.localhost:3000')
   })
 })

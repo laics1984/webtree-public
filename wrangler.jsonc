@@ -9,11 +9,11 @@
   },
   "vars": {
     "NUXT_PUBLIC_API_BASE": "https://api.fowable.com",
-    "NUXT_PUBLIC_PLATFORM_BASE_DOMAIN": "public.myfowable.com",
+    "NUXT_PUBLIC_PLATFORM_BASE_DOMAIN": "myfowable.com",
     "NUXT_PUBLIC_SITE_PROTOCOL": "https"
   },
   // Zone-wide, because Cloudflare for SaaS custom hostnames arrive under the
-  // CLIENT's domain (clientdomain.com), which no `*.public.myfowable.com/*`
+  // CLIENT's domain (clientdomain.com), which no `*.myfowable.com/*`
   // pattern can ever match. Worker routes are evaluated against the request URL,
   // not the fallback origin, so widening this is what lets a registered custom
   // hostname reach the Worker at all.
