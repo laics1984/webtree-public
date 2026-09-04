@@ -3,7 +3,7 @@ import type { CSSProperties } from 'vue'
 import type { PublicBlockNode } from '~/types/public'
 import ElementRenderer from '~/components/renderer/ElementRenderer.vue'
 import SectionDivider from '~/components/blocks/SectionDivider.vue'
-import { getNodeClasses, getNodeStyles, getStringField } from '~/lib/blockRuntime'
+import { getHeadingTag, getNodeClasses, getNodeStyles, getStringField } from '~/lib/blockRuntime'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
 import { getNodeChildren, getNodeKey, normalizeBlockType } from '~/lib/schema'
 import { getNodeDivider } from '~/lib/sectionDivider'
@@ -81,7 +81,11 @@ const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
 // as the HTML id so `#sec-...` hrefs resolve and smooth-scroll to this section.
 const anchorId = computed(() => getStringField(props.node, 'anchorId') || undefined)
 const divider = computed(() => getNodeDivider(props.node))
-const tag = computed(() => nodeType.value === 'section' ? 'section' : 'div')
+// A split headline is one heading spread over two text nodes, so the
+// heading tag lands on the group that holds them (see getHeadingTag).
+const tag = computed(
+  () => getHeadingTag(props.node) ?? (nodeType.value === 'section' ? 'section' : 'div')
+)
 const isTwoColumnLayout = computed(() => nodeType.value === '2col')
 const isThreeColumnLayout = computed(() => nodeType.value === '3col')
 const isColumnLayout = computed(() => isTwoColumnLayout.value || isThreeColumnLayout.value)
@@ -413,6 +417,16 @@ const overlayStyle = computed<CSSProperties | null>(() => {
 
 .wt-container-block--three-col {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* A lone child is not a column — it is the row. Generalises the orphan rule
+   below: `$gridFit` (template_filler.py) maps a one-item repeat through its
+   `n <= 2` branch to `2Col`, so a single-branch locations section, a one-member
+   team grid or a one-tier pricing table sat in column 1 at half width with a
+   50% void beside it, on desktop AND tablet. The mobile query already collapses
+   to one column, so this only ever fires above 768px. */
+.wt-container-block--column-layout > :only-child {
+  grid-column: 1 / -1;
 }
 
 @media (min-width: 768px) and (max-width: 1023.98px) {
