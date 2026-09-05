@@ -67,6 +67,66 @@ export interface PublicMenu {
   items?: PublicMenuItem[] | null
 }
 
+// --- WhatsApp click-to-chat widget -------------------------------------------
+// Mirrors the CMS API's WhatsAppWidgetPresenter payload (see webtree-cms-api
+// specs/public-site-api.md). Every `href` here arrives BUILT — the API owns
+// phone formatting so a wa.me link cannot be mis-assembled per renderer. What
+// this renderer owns is presentation: opening hours, page rules, device gates.
+
+export interface WhatsAppAgent {
+  id: string
+  name: string
+  role?: string | null
+  avatarUrl?: string | null
+  href: string
+}
+
+export interface WhatsAppHoursInterval {
+  from: string
+  to: string
+}
+
+/** Keys are 'mon'…'sun'; storage order is display order. */
+export type WhatsAppSchedule = Record<string, WhatsAppHoursInterval[] | undefined>
+
+export interface WhatsAppHours {
+  enabled: boolean
+  timezone: string
+  awayMessage: string
+  schedule: WhatsAppSchedule
+}
+
+export interface WhatsAppGreeting {
+  enabled: boolean
+  title: string
+  message: string
+  delaySeconds: number
+}
+
+export interface WhatsAppPageRule {
+  mode: 'all' | 'include' | 'exclude'
+  paths: string[]
+}
+
+export interface WhatsAppVisibility {
+  devices: 'all' | 'mobile' | 'desktop'
+  pages: WhatsAppPageRule
+}
+
+export interface WhatsAppWidget {
+  phone?: string | null
+  /** Null when only the agents carry numbers — the roster still opens. */
+  href?: string | null
+  displayMode: 'icon' | 'labeled'
+  label: string
+  position: 'bottom-right' | 'bottom-left'
+  includePageUrl: boolean
+  greeting: WhatsAppGreeting
+  visibility: WhatsAppVisibility
+  hours: WhatsAppHours
+  agents: WhatsAppAgent[]
+}
+
 export interface SitePayload {
   layoutId?: string | number | null
   layoutVersionId?: string | number | null
@@ -75,6 +135,9 @@ export interface SitePayload {
   footerSchema?: PublicSchemaTree | PublicBlockNode[] | null
   menus?: PublicMenu[] | null
   defaults?: SiteDefaults
+  // Null/absent unless the widget is on AND has a number: presence is the
+  // renderer's whole guard.
+  whatsapp?: WhatsAppWidget | null
 }
 
 export interface SeoPayload {

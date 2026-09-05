@@ -2,6 +2,7 @@
 import type { CSSProperties } from 'vue'
 import SchemaRenderer from '~/components/renderer/SchemaRenderer.vue'
 import GalleryLightbox from '~/components/public/GalleryLightbox.vue'
+import WhatsAppWidget from '~/components/public/WhatsAppWidget.vue'
 import {
   getNodeStyles,
   runtimeBuilderStylesKey,
@@ -516,6 +517,11 @@ useHead(() => ({
       :slides="lightboxSlides"
       @close="closeLightbox"
     />
+    <!-- Site-wide, so it lives beside the header/footer rather than in the page
+         slot: it must survive a route change without remounting and losing the
+         visitor's dismissed greeting. Renders nothing unless the API sent a
+         usable config. -->
+    <WhatsAppWidget :widget="site?.whatsapp" />
   </div>
 </template>
 
