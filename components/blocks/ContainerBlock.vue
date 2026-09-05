@@ -3,7 +3,7 @@ import type { CSSProperties } from 'vue'
 import type { PublicBlockNode } from '~/types/public'
 import ElementRenderer from '~/components/renderer/ElementRenderer.vue'
 import SectionDivider from '~/components/blocks/SectionDivider.vue'
-import { getNodeClasses, getNodeStyles, getStringField } from '~/lib/blockRuntime'
+import { getHeadingTag, getNodeClasses, getNodeStyles, getStringField } from '~/lib/blockRuntime'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
 import { getNodeChildren, getNodeKey, normalizeBlockType } from '~/lib/schema'
 import { getNodeDivider } from '~/lib/sectionDivider'
@@ -81,7 +81,11 @@ const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
 // as the HTML id so `#sec-...` hrefs resolve and smooth-scroll to this section.
 const anchorId = computed(() => getStringField(props.node, 'anchorId') || undefined)
 const divider = computed(() => getNodeDivider(props.node))
-const tag = computed(() => nodeType.value === 'section' ? 'section' : 'div')
+// A split headline is one heading spread over two text nodes, so the
+// heading tag lands on the group that holds them (see getHeadingTag).
+const tag = computed(
+  () => getHeadingTag(props.node) ?? (nodeType.value === 'section' ? 'section' : 'div')
+)
 const isTwoColumnLayout = computed(() => nodeType.value === '2col')
 const isThreeColumnLayout = computed(() => nodeType.value === '3col')
 const isColumnLayout = computed(() => isTwoColumnLayout.value || isThreeColumnLayout.value)
@@ -415,13 +419,41 @@ const overlayStyle = computed<CSSProperties | null>(() => {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* A lone item in the final row is the row, not a column.
+
+   `$gridFit` (template_filler.py) already picks the column count that best
+   fits the item count, but no count divides every grid: 4 cards in a 3-wide
+   grid, or any odd count in a 2-wide one, leaves the last item packed into
+   column 1 with the rest of the row void beside it. This states the rule once,
+   per breakpoint, because "alone in its row" is only answerable against that
+   breakpoint's own column count: the last item is alone iff its 1-based index
+   is congruent to 1 modulo the columns.
+
+   It subsumes — and replaces — the `:only-child` rule that used to sit here
+   (a one-item grid is the n = 0 case) and the tablet-only three-col orphan
+   rule below it, which were the same idea written twice for two special cases.
+   A partial row with TWO items is deliberately left alone: that row reads as
+   balanced, and widening one of its items would unbalance it.
+
+   Mobile is one column, so every rule below is inert there. */
+.wt-container-block--two-col > :last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 1024px) {
+  .wt-container-block--three-col > :last-child:nth-child(3n + 1) {
+    grid-column: 1 / -1;
+  }
+}
+
 @media (min-width: 768px) and (max-width: 1023.98px) {
   .wt-container-block--three-col {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* Two columns wide here, so the three-col grid takes the two-col test. */
   .wt-container-block--three-col > :last-child:nth-child(odd) {
-    grid-column: span 2 / span 2;
+    grid-column: 1 / -1;
   }
 }
 

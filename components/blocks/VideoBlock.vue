@@ -74,9 +74,21 @@ const iframeSrc = computed(() => {
   width: 100%;
 }
 
+/* `height: 100%` makes the aspect ratio a FALLBACK, not an override. The node's
+   own styles land on the outer box, never on this frame, so an authored
+   `height` was silently ignored and the frame sized itself from its width
+   alone — overflowing downward and, being positioned, painting over the next
+   sibling. (`locations-map-cards` states `height: 230px` on its map; at 1280px
+   desktop the frame wanted ~307px and covered 77px of the branch address.)
+   With this, a definite outer height wins and `aspect-ratio` is ignored; an
+   `auto` outer height resolves this to `auto` and the ratio still drives, which
+   is what `map-feature` and every `video-*` template rely on. Same shape as
+   ImageBlock's `.wt-image { width: 100%; height: 100% }`: the inner element
+   defers to the wrapper's authored box. */
 .wt-video-block__frame {
   position: relative;
   width: 100%;
+  height: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   background: #000;
