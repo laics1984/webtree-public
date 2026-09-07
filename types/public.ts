@@ -235,6 +235,18 @@ export interface PublicContentItemTag {
   title?: string
 }
 
+/**
+ * One photo of a content gallery.
+ *
+ * The API resolves both sizes (see PublishedContentItemResolver::galleryPhotos)
+ * so the grid can lazy-load thumbnails while the lightbox loads the original —
+ * the renderer never derives one URL from the other.
+ */
+export interface PublicContentItemPhoto {
+  src: string
+  thumbnail: string
+}
+
 export interface PublicContentItem {
   id: string
   type: PublicContentItemType
@@ -244,7 +256,7 @@ export interface PublicContentItem {
   excerpt?: string | null
   body?: string | null
   image?: string | null
-  gallery?: Array<string | null>
+  gallery?: PublicContentItemPhoto[]
   publish?: string | null
   start?: string | null
   end?: string | null

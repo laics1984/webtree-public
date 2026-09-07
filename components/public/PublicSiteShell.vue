@@ -433,8 +433,9 @@ useSchemaMotion({
   builderStyles: () => props.site?.builderStyles,
 })
 
-// Click-to-enlarge on gallery grids (`lightbox` markers from the section
-// catalog). Client-only; tiles stay plain images without it.
+// Click-to-enlarge on gallery grids — both the `lightbox` markers the section
+// catalog stamps and the CMS gallery fields, which are galleries by nature.
+// Client-only; tiles stay plain images without it.
 const {
   open: lightboxOpen,
   slides: lightboxSlides,
