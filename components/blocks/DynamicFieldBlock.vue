@@ -121,6 +121,10 @@ const galleryPhotos = computed(() => item?.gallery ?? [])
     `data-wt-node-id` and reads the tiles by their `wt-image` class, so both are
     part of the contract rather than styling. Tiles show the stored thumbnail
     and name their original in `data-wt-full`, which is what the viewer opens.
+
+    A caption doubles as the alt text: an author's own words describe the photo
+    better than a generated "photo 3 of 9" ever could. The viewer marks its
+    caption bar aria-hidden when the two match, so nothing is announced twice.
   -->
   <div
     v-else-if="(fieldType === 'articlegallery' || fieldType === 'eventgallery') && galleryPhotos.length"
@@ -135,7 +139,8 @@ const galleryPhotos = computed(() => item?.gallery ?? [])
       class="wt-image wt-dynamic-gallery__tile"
       :src="photo.thumbnail"
       :data-wt-full="photo.src"
-      :alt="`${item.title} — photo ${position + 1} of ${galleryPhotos.length}`"
+      :data-wt-caption="photo.caption || undefined"
+      :alt="photo.caption || `${item.title} — photo ${position + 1} of ${galleryPhotos.length}`"
       loading="lazy"
       decoding="async"
     />

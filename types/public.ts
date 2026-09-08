@@ -193,7 +193,9 @@ export interface PublicRoutesResponse {
   routes: Array<{
     path: string
     slug?: string
-    pageId: string
+    /** Id of the page, article or event this route resolves to. */
+    contentId: string
+    contentType?: PublicRouteContentType
     isHomepage?: boolean
     updatedAt?: string
     changeFrequency?: string
@@ -203,6 +205,8 @@ export interface PublicRoutesResponse {
 }
 
 export type PublicContentItemType = 'article' | 'event'
+/** Builder pages plus every content type that owns a public URL. */
+export type PublicRouteContentType = 'page' | PublicContentItemType
 export type PublicTemplateType = PublicContentItemType | 'articleListing' | 'eventListing'
 
 export interface PublicTemplatePayload {
@@ -245,6 +249,8 @@ export interface PublicContentItemTag {
 export interface PublicContentItemPhoto {
   src: string
   thumbnail: string
+  /** Empty when the author gave the photo no caption. */
+  caption: string
 }
 
 export interface PublicContentItem {

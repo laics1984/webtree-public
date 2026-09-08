@@ -12,12 +12,12 @@ describe('resolveHomepageFallbackPath', () => {
           {
             path: '/legacy-site-key',
             slug: 'legacy-site-key',
-            pageId: 'legacy',
+            contentId: 'legacy',
           },
           {
             path: '/public-identifier',
             slug: 'public-identifier',
-            pageId: 'public',
+            contentId: 'public',
           },
         ],
       })
@@ -34,7 +34,7 @@ describe('resolveHomepageFallbackPath', () => {
           {
             path: '/legacy-site-key',
             slug: 'legacy-site-key',
-            pageId: 'legacy',
+            contentId: 'legacy',
           },
         ],
       })
