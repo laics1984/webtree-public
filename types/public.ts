@@ -193,7 +193,9 @@ export interface PublicRoutesResponse {
   routes: Array<{
     path: string
     slug?: string
-    pageId: string
+    /** Id of the page, article or event this route resolves to. */
+    contentId: string
+    contentType?: PublicRouteContentType
     isHomepage?: boolean
     updatedAt?: string
     changeFrequency?: string
@@ -203,6 +205,8 @@ export interface PublicRoutesResponse {
 }
 
 export type PublicContentItemType = 'article' | 'event'
+/** Builder pages plus every content type that owns a public URL. */
+export type PublicRouteContentType = 'page' | PublicContentItemType
 export type PublicTemplateType = PublicContentItemType | 'articleListing' | 'eventListing'
 
 export interface PublicTemplatePayload {
@@ -235,6 +239,20 @@ export interface PublicContentItemTag {
   title?: string
 }
 
+/**
+ * One photo of a content gallery.
+ *
+ * The API resolves both sizes (see PublishedContentItemResolver::galleryPhotos)
+ * so the grid can lazy-load thumbnails while the lightbox loads the original —
+ * the renderer never derives one URL from the other.
+ */
+export interface PublicContentItemPhoto {
+  src: string
+  thumbnail: string
+  /** Empty when the author gave the photo no caption. */
+  caption: string
+}
+
 export interface PublicContentItem {
   id: string
   type: PublicContentItemType
@@ -244,7 +262,7 @@ export interface PublicContentItem {
   excerpt?: string | null
   body?: string | null
   image?: string | null
-  gallery?: Array<string | null>
+  gallery?: PublicContentItemPhoto[]
   publish?: string | null
   start?: string | null
   end?: string | null

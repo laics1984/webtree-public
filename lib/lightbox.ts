@@ -24,7 +24,7 @@
  */
 import { getNodeField } from '~/lib/blockRuntime'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
-import { getNodeChildren, normalizeSchemaNodes } from '~/lib/schema'
+import { getNodeChildren, normalizeBlockType, normalizeSchemaNodes } from '~/lib/schema'
 
 export type LightboxSlide = {
   src: string
@@ -49,10 +49,29 @@ export type LightboxRuntimeOptions = {
 const GROUP_ATTR = 'data-wt-lightbox-group'
 const ITEM_ATTR = 'data-wt-lightbox-item'
 const CAPTION_ATTR = 'data-wt-caption'
+/** Set by a tile that renders a smaller copy than the one worth enlarging. */
+const FULL_ATTR = 'data-wt-full'
 const STYLE_ELEMENT_ID = 'wt-lightbox-runtime'
 
 /**
- * DOM ids of every node marked as a lightbox gallery group.
+ * The CMS gallery fields, which render a set of photos from the current article
+ * or event. Unlike a hand-built image grid they are a gallery by definition, so
+ * they need no `lightbox` marker — and this also arms detail templates that
+ * were saved before any marker existed.
+ */
+const GALLERY_FIELD_TYPES = new Set(['articlegallery', 'eventgallery'])
+
+const isLightboxGroup = (node: unknown): boolean => {
+  const record = node as Record<string, unknown>
+
+  return (
+    getNodeField(record, 'lightbox') === true ||
+    GALLERY_FIELD_TYPES.has(normalizeBlockType(record?.type as string | null | undefined))
+  )
+}
+
+/**
+ * DOM ids of every node that opens a lightbox group.
  *
  * Nested markers are not collected twice: a marked node's subtree is not
  * re-scanned, so an (unlikely) gallery inside a gallery yields one outer group
@@ -63,7 +82,7 @@ export function collectLightboxGroupIds(schemas: unknown[]): string[] {
   const seen = new Set<string>()
 
   const visit = (node: unknown) => {
-    if (getNodeField(node as Record<string, unknown>, 'lightbox') === true) {
+    if (isLightboxGroup(node)) {
       const nodeId = getNodeDomId(node as Record<string, unknown>)
       if (nodeId && !seen.has(nodeId)) {
         seen.add(nodeId)
@@ -97,7 +116,9 @@ export function readGroupImages(root: ParentNode): HTMLImageElement[] {
 export function toSlide(img: HTMLImageElement): LightboxSlide {
   const alt = img.getAttribute('alt') || ''
   return {
-    src: img.currentSrc || img.getAttribute('src') || '',
+    // A tile may deliberately render a smaller copy — a CMS gallery shows
+    // stored thumbnails — so the original it names wins over what is on screen.
+    src: img.getAttribute(FULL_ATTR) || img.currentSrc || img.getAttribute('src') || '',
     alt,
     caption: img.getAttribute(CAPTION_ATTR) || alt,
   }
@@ -147,9 +168,11 @@ export function startLightboxRuntime(options: LightboxRuntimeOptions): () => voi
     if (!root) continue
 
     const images = readGroupImages(root)
-    // A single image is not a gallery — an enlarge affordance that can't be
-    // navigated is just a click that swallows itself. Leave it as a plain tile.
-    if (images.length < 2) continue
+    // A single image is normally not a gallery — an enlarge affordance that
+    // can't be navigated is just a click that swallows itself. The exception is
+    // a tile showing a smaller copy of its photo, where enlarging is the whole
+    // point even with nothing to navigate to.
+    if (images.length < 2 && !images.some((img) => img.hasAttribute(FULL_ATTR))) continue
 
     if (!armed) {
       ensureRuntimeStylesheet()

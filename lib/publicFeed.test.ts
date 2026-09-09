@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildRobotsTxt, resolvePublicHost } from '~/lib/publicFeed'
-import type { PublicSiteResponse, SiteDefaults } from '~/types/public'
+import { buildRobotsTxt, buildSitemapXml, resolvePublicHost } from '~/lib/publicFeed'
+import type { PublicRoutesResponse, PublicSiteResponse, SiteDefaults } from '~/types/public'
 
 const PROD_BASE = 'myfowable.com'
 const PLATFORM_HOST = 'acme.myfowable.com'
@@ -16,6 +16,15 @@ function siteResponse(defaults: SiteDefaults = {}, canonicalHost: string | null 
     },
     site: { defaults },
   } as PublicSiteResponse
+}
+
+function routesResponse(routes: PublicRoutesResponse['routes']): PublicRoutesResponse {
+  return {
+    publicIdentifier: 'acme',
+    resolvedHost: PLATFORM_HOST,
+    canonicalHost: CUSTOM_HOST,
+    routes,
+  }
 }
 
 describe('buildRobotsTxt on a client custom domain', () => {
@@ -81,6 +90,42 @@ describe('buildRobotsTxt on a platform preview host', () => {
 
     expect(result).not.toContain('Sitemap:')
     expect(result).toContain('User-agent: GPTBot')
+  })
+})
+
+describe('buildSitemapXml', () => {
+  it('lists every content type the manifest carries, not only builder pages', () => {
+    const xml = buildSitemapXml(
+      routesResponse([
+        { path: '/', contentId: 'p1', contentType: 'page', isHomepage: true, changeFrequency: 'daily', priority: 1 },
+        { path: '/articles/sports-day', contentId: 'a1', contentType: 'article', changeFrequency: 'weekly', priority: 0.6 },
+        { path: '/events/open-day', contentId: 'e1', contentType: 'event', changeFrequency: 'monthly', priority: 0.5 },
+      ]),
+      CUSTOM_HOST,
+      'https',
+      PROD_BASE,
+    )
+
+    expect(xml).toContain(`<loc>https://${CUSTOM_HOST}/</loc>`)
+    expect(xml).toContain(`<loc>https://${CUSTOM_HOST}/articles/sports-day</loc>`)
+    expect(xml).toContain(`<loc>https://${CUSTOM_HOST}/events/open-day</loc>`)
+    expect(xml).toContain('<changefreq>monthly</changefreq>')
+    expect(xml.match(/<url>/g)).toHaveLength(3)
+  })
+
+  it('leaves out routes the manifest flags noindex', () => {
+    const xml = buildSitemapXml(
+      routesResponse([
+        { path: '/articles/sports-day', contentId: 'a1', contentType: 'article' },
+        { path: '/privacy', contentId: 'p2', contentType: 'page', noindex: true },
+      ]),
+      CUSTOM_HOST,
+      'https',
+      PROD_BASE,
+    )
+
+    expect(xml).toContain('/articles/sports-day')
+    expect(xml).not.toContain('/privacy')
   })
 })
 

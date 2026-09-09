@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { getNodeClasses, getNodeStyles, getStringField } from '~/lib/blockRuntime'
+import { getClampLines, getNodeClasses, getNodeStyles, getStringField } from '~/lib/blockRuntime'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
 
 const props = defineProps<{ node: Record<string, any> }>()
@@ -9,12 +9,12 @@ const nodeClasses = computed(() => getNodeClasses(props.node))
 const nodeStyles = computed(() => getNodeStyles(props.node))
 const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)
 
-// Progressive "show more" for clamped text (e.g. team-member bios marked with
-// `wt-clamp`). The element ships a static line-clamp (inline style) so it is
-// truncated server-side and in builds without this script; on the client we
-// measure overflow and, when the content is actually cut off, add a toggle that
-// removes the clamp. No clamp class → unchanged single-div render.
-const isClamp = computed(() => /\bwt-clamp\b/.test(nodeClasses.value))
+// Progressive "show more" for clamped text (e.g. team-member bios). The element
+// ships a static line-clamp (inline style) so it is truncated server-side and in
+// builds without this script; on the client we measure overflow and, when the
+// content is actually cut off, add a toggle that removes the clamp. No clamp
+// declared → unchanged single-div render.
+const isClamp = computed(() => getClampLines(props.node) !== null)
 const textEl = ref<HTMLElement | null>(null)
 const mounted = ref(false)
 const expanded = ref(false)

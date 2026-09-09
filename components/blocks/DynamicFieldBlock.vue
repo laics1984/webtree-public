@@ -41,6 +41,8 @@ const nodeStyles = computed(() => {
 })
 
 const renderedBody = computed(() => renderCmsBodyToHtml(item?.body))
+
+const galleryPhotos = computed(() => item?.gallery ?? [])
 </script>
 
 <template>
@@ -113,6 +115,36 @@ const renderedBody = computed(() => renderCmsBodyToHtml(item?.body))
     :data-wt-node-id="nodeDomId"
     loading="lazy"
   />
+
+  <!--
+    Gallery grid. The lightbox runtime (~/lib/lightbox) arms this node by its
+    `data-wt-node-id` and reads the tiles by their `wt-image` class, so both are
+    part of the contract rather than styling. Tiles show the stored thumbnail
+    and name their original in `data-wt-full`, which is what the viewer opens.
+
+    A caption doubles as the alt text: an author's own words describe the photo
+    better than a generated "photo 3 of 9" ever could. The viewer marks its
+    caption bar aria-hidden when the two match, so nothing is announced twice.
+  -->
+  <div
+    v-else-if="(fieldType === 'articlegallery' || fieldType === 'eventgallery') && galleryPhotos.length"
+    class="wt-dynamic-gallery"
+    :class="nodeClasses"
+    :style="nodeStyles"
+    :data-wt-node-id="nodeDomId"
+  >
+    <img
+      v-for="(photo, position) in galleryPhotos"
+      :key="photo.src"
+      class="wt-image wt-dynamic-gallery__tile"
+      :src="photo.thumbnail"
+      :data-wt-full="photo.src"
+      :data-wt-caption="photo.caption || undefined"
+      :alt="photo.caption || `${item.title} — photo ${position + 1} of ${galleryPhotos.length}`"
+      loading="lazy"
+      decoding="async"
+    />
+  </div>
 
   <p
     v-else-if="fieldType === 'articledate'"
@@ -259,6 +291,24 @@ const renderedBody = computed(() => renderCmsBodyToHtml(item?.body))
   width: 100%;
   height: auto;
   object-fit: cover;
+}
+
+.wt-dynamic-gallery {
+  display: grid;
+  /* Auto-fill rather than a fixed column count: the same block reads well in a
+     narrow article column and in a full-bleed section without an author
+     choosing a breakpoint. */
+  grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));
+  gap: 0.5rem;
+}
+
+.wt-dynamic-gallery__tile {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
 }
 
 .wt-dynamic-meta {

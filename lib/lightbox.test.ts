@@ -52,6 +52,23 @@ describe('collectLightboxGroupIds', () => {
     const grid = node({ id: 'grid', lightbox: true })
     expect(collectLightboxGroupIds([[grid], [grid]])).toEqual(['grid'])
   })
+
+  it('treats a CMS gallery field as a group without a marker', () => {
+    // A detail template saved before the marker existed still has to arm.
+    const tree = node({
+      id: 'section',
+      content: [
+        node({ id: 'article-photos', type: 'articleGallery' }),
+        node({ id: 'event-photos', type: 'eventGallery' }),
+      ],
+    })
+    expect(collectLightboxGroupIds([[tree]])).toEqual(['article-photos', 'event-photos'])
+  })
+
+  it('leaves other dynamic fields alone', () => {
+    const tree = node({ id: 'cover', type: 'articleImage' })
+    expect(collectLightboxGroupIds([[tree]])).toEqual([])
+  })
 })
 
 const mountGrid = (html: string) => {
@@ -110,9 +127,39 @@ describe('toSlide', () => {
     const root = mountGrid(tile('a.jpg'))
     expect(toSlide(readGroupImages(root)[0]).caption).toBe('a.jpg alt')
   })
+
+  it('enlarges the declared original, not the thumbnail on screen', () => {
+    const root = mountGrid(tile('thumb.jpg', 'data-wt-full="original.jpg"'))
+    expect(toSlide(readGroupImages(root)[0]).src).toBe('original.jpg')
+  })
 })
 
 describe('startLightboxRuntime', () => {
+  it('leaves a lone plain tile inert — there is nothing to reveal', () => {
+    mountGrid(tile('a.jpg'))
+    const onOpen = vi.fn()
+    const stop = startLightboxRuntime({ groupIds: ['grid'], onOpen })
+
+    document.querySelector<HTMLImageElement>('img')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(onOpen).not.toHaveBeenCalled()
+    stop()
+  })
+
+  it('arms a lone tile that renders a thumbnail of a larger original', () => {
+    mountGrid(tile('thumb.jpg', 'data-wt-full="original.jpg"'))
+    const onOpen = vi.fn()
+    const stop = startLightboxRuntime({ groupIds: ['grid'], onOpen })
+
+    document.querySelector<HTMLImageElement>('img')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    expect(onOpen.mock.calls[0][0].slides[0].src).toBe('original.jpg')
+    stop()
+  })
+
   it('arms tiles with keyboard-reachable button semantics', () => {
     mountGrid(tile('a.jpg') + tile('b.jpg'))
     const stop = startLightboxRuntime({ groupIds: ['grid'], onOpen: vi.fn() })
