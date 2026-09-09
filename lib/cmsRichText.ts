@@ -8,6 +8,7 @@ export type CmsRichTextNode = {
   caption?: string
   align?: string
   fullWidth?: boolean
+  header?: boolean
   bold?: boolean
   italic?: boolean
   underline?: boolean
@@ -48,21 +49,64 @@ const renderTextNode = (node: CmsRichTextNode): string => {
   return html
 }
 
-const renderChildren = (
+const renderChildList = (
   children: CmsRichTextNode[] | undefined,
   resolveAssetUrl: ResolveAssetUrl
-) => {
-  const html = Array.isArray(children)
+) =>
+  Array.isArray(children)
     ? children.map((child) => renderNode(child, resolveAssetUrl)).join('')
     : ''
 
-  return html || '<br />'
-}
+/**
+ * Children of a block that must not collapse to nothing. An empty paragraph or
+ * cell keeps its line box only if something occupies it.
+ */
+const renderChildren = (
+  children: CmsRichTextNode[] | undefined,
+  resolveAssetUrl: ResolveAssetUrl
+) => renderChildList(children, resolveAssetUrl) || '<br />'
 
 const isEmptyParagraph = (node: CmsRichTextNode) =>
   node.type === 'paragraph' &&
   (!Array.isArray(node.children) ||
     node.children.every((child) => getNodeText([child]).trim() === ''))
+
+const ALIGNMENTS = new Set(['left', 'center', 'right', 'justify'])
+
+/**
+ * Block alignment, which the editor writes onto paragraphs, headings and list
+ * items and which this used to read for images only — so an author could centre
+ * a paragraph, see it centred while writing, and publish it left-aligned.
+ */
+const alignClass = (node: CmsRichTextNode) =>
+  typeof node.align === 'string' && ALIGNMENTS.has(node.align)
+    ? `wt-rich-align-${node.align}`
+    : ''
+
+const classAttr = (...names: Array<string | false | undefined>) => {
+  const value = names.filter(Boolean).join(' ')
+  return value ? ` class="${escapeAttribute(value)}"` : ''
+}
+
+/**
+ * Block types that are nothing but a tag around their children. Editor names
+ * and plain HTML names both map here, because bodies exist carrying either.
+ */
+const BLOCK_TAGS: Record<string, string> = {
+  'block-quote': 'blockquote',
+  'heading-one': 'h1',
+  h1: 'h1',
+  'heading-two': 'h2',
+  h2: 'h2',
+  'heading-three': 'h3',
+  h3: 'h3',
+  'bulleted-list': 'ul',
+  ul: 'ul',
+  'numbered-list': 'ol',
+  ol: 'ol',
+  'list-item': 'li',
+  li: 'li',
+}
 
 const renderImageNode = (
   node: CmsRichTextNode,
@@ -91,6 +135,53 @@ const renderImageNode = (
   return `<figure class="${classes}"><img src="${escapeAttribute(src)}" alt="${escapeAttribute(alt)}" loading="lazy" />${caption}</figure>`
 }
 
+const renderCell = (
+  cell: CmsRichTextNode,
+  resolveAssetUrl: ResolveAssetUrl
+) => {
+  const tag = cell.header ? 'th' : 'td'
+  const scope = cell.header ? ' scope="col"' : ''
+  return `<${tag}${scope}${classAttr(alignClass(cell))}>${renderChildren(cell.children, resolveAssetUrl)}</${tag}>`
+}
+
+const renderRow = (row: CmsRichTextNode, resolveAssetUrl: ResolveAssetUrl) => {
+  // Anything that is not a cell is dropped rather than rendered in place: a
+  // stray paragraph inside a `<tr>` is invalid markup the browser relocates,
+  // which moves content out of the table entirely.
+  const cells = (row.children ?? []).filter((cell) => cell.type === 'table-cell')
+  if (!cells.length) return ''
+  return `<tr>${cells.map((cell) => renderCell(cell, resolveAssetUrl)).join('')}</tr>`
+}
+
+/**
+ * A table, wrapped in its own scroll container so a wide one scrolls within the
+ * article column instead of widening the page on a phone.
+ */
+const renderTableNode = (
+  node: CmsRichTextNode,
+  resolveAssetUrl: ResolveAssetUrl
+) => {
+  const rows = (node.children ?? []).filter((row) => row.type === 'table-row')
+  if (!rows.length) return ''
+
+  const [first, ...rest] = rows
+  const firstIsHeader =
+    (first.children ?? []).length > 0 &&
+    (first.children ?? []).every((cell) => cell.header === true)
+
+  const head = firstIsHeader
+    ? `<thead>${renderRow(first, resolveAssetUrl)}</thead>`
+    : ''
+  const bodyRows = firstIsHeader ? rest : rows
+  const body = bodyRows
+    .map((row) => renderRow(row, resolveAssetUrl))
+    .join('')
+
+  if (!head && !body) return ''
+
+  return `<div class="wt-rich-table-wrap"><table class="wt-rich-table">${head}${body ? `<tbody>${body}</tbody>` : ''}</table></div>`
+}
+
 const renderNode = (
   node: CmsRichTextNode,
   resolveAssetUrl: ResolveAssetUrl
@@ -99,38 +190,20 @@ const renderNode = (
     return renderTextNode(node)
   }
 
-  switch (node.type) {
-    case 'image':
-      return renderImageNode(node, resolveAssetUrl)
-    case 'block-quote':
-      return `<blockquote>${renderChildren(node.children, resolveAssetUrl)}</blockquote>`
-    case 'heading-one':
-    case 'h1':
-      return `<h1>${renderChildren(node.children, resolveAssetUrl)}</h1>`
-    case 'heading-two':
-    case 'h2':
-      return `<h2>${renderChildren(node.children, resolveAssetUrl)}</h2>`
-    case 'heading-three':
-    case 'h3':
-      return `<h3>${renderChildren(node.children, resolveAssetUrl)}</h3>`
-    case 'bulleted-list':
-    case 'ul':
-      return `<ul>${renderChildren(node.children, resolveAssetUrl)}</ul>`
-    case 'numbered-list':
-    case 'ol':
-      return `<ol>${renderChildren(node.children, resolveAssetUrl)}</ol>`
-    case 'list-item':
-    case 'li':
-      return `<li>${renderChildren(node.children, resolveAssetUrl)}</li>`
-    case 'paragraph': {
-      const className = isEmptyParagraph(node)
-        ? ' class="wt-rich-empty-paragraph"'
-        : ''
-      return `<p${className}>${renderChildren(node.children, resolveAssetUrl)}</p>`
-    }
-    default:
-      return `<p>${renderChildren(node.children, resolveAssetUrl)}</p>`
+  if (node.type === 'image') return renderImageNode(node, resolveAssetUrl)
+  if (node.type === 'table') return renderTableNode(node, resolveAssetUrl)
+
+  if (node.type === 'paragraph') {
+    return `<p${classAttr(
+      isEmptyParagraph(node) && 'wt-rich-empty-paragraph',
+      alignClass(node)
+    )}>${renderChildren(node.children, resolveAssetUrl)}</p>`
   }
+
+  // An unrecognised block still renders its text, as a paragraph. Losing the
+  // wrapper is recoverable; losing the words is not.
+  const tag = (node.type && BLOCK_TAGS[node.type]) || 'p'
+  return `<${tag}${classAttr(alignClass(node))}>${renderChildren(node.children, resolveAssetUrl)}</${tag}>`
 }
 
 const parseCmsRichText = (body: string): CmsRichTextNode[] | null => {

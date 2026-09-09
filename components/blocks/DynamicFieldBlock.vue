@@ -286,6 +286,130 @@ const galleryPhotos = computed(() => item?.gallery ?? [])
   width: 100%;
 }
 
+/*
+ * Article prose.
+ *
+ * Tailwind's preflight resets headings to body size and weight, strips list
+ * markers and indentation, and zeroes every margin. Until these rules existed
+ * this block styled only paragraphs and images, so a Heading 1 published as
+ * ordinary text and a bulleted list published as unmarked lines — the document
+ * carried the structure and the page threw it away.
+ *
+ * Paragraphs keep `margin: 0` deliberately: authors space this content with
+ * blank paragraphs (`.wt-rich-empty-paragraph` above), and giving <p> a margin
+ * would reflow every article already published.
+ */
+.wt-dynamic-body :deep(h1),
+.wt-dynamic-body :deep(h2),
+.wt-dynamic-body :deep(h3) {
+  font-family: var(--builder-font-heading, var(--wt-font-heading, inherit));
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1.75rem 0 0.5rem;
+}
+
+.wt-dynamic-body :deep(h1:first-child),
+.wt-dynamic-body :deep(h2:first-child),
+.wt-dynamic-body :deep(h3:first-child) {
+  margin-top: 0;
+}
+
+.wt-dynamic-body :deep(h1) {
+  font-size: 1.75rem;
+}
+
+.wt-dynamic-body :deep(h2) {
+  font-size: 1.4rem;
+}
+
+.wt-dynamic-body :deep(h3) {
+  font-size: 1.15rem;
+}
+
+.wt-dynamic-body :deep(ul),
+.wt-dynamic-body :deep(ol) {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+.wt-dynamic-body :deep(ul) {
+  list-style: disc;
+}
+
+.wt-dynamic-body :deep(ol) {
+  list-style: decimal;
+}
+
+.wt-dynamic-body :deep(li) {
+  margin: 0.25rem 0;
+}
+
+.wt-dynamic-body :deep(blockquote) {
+  margin: 1rem 0;
+  padding-left: 1rem;
+  border-left: 2px solid rgba(148, 163, 184, 0.4);
+  font-style: italic;
+  color: var(--wt-color-muted, #6b7280);
+}
+
+/* 700, not preflight's `bolder`, so bold stays visible inside a heading. */
+.wt-dynamic-body :deep(strong) {
+  font-weight: 700;
+}
+
+.wt-dynamic-body :deep(code) {
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background: rgba(148, 163, 184, 0.16);
+  font-size: 0.9em;
+}
+
+/* Block alignment, written by the editor onto paragraphs, headings and list
+   items. Only images honoured it before. */
+.wt-dynamic-body :deep(.wt-rich-align-left) {
+  text-align: left;
+}
+
+.wt-dynamic-body :deep(.wt-rich-align-center) {
+  text-align: center;
+}
+
+.wt-dynamic-body :deep(.wt-rich-align-right) {
+  text-align: right;
+}
+
+.wt-dynamic-body :deep(.wt-rich-align-justify) {
+  text-align: justify;
+}
+
+/* A table scrolls inside its own column rather than widening the page: the
+   article is capped at 72ch and a pasted spreadsheet is routinely wider. */
+.wt-dynamic-body :deep(.wt-rich-table-wrap) {
+  margin: 1rem 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wt-dynamic-body :deep(.wt-rich-table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.wt-dynamic-body :deep(.wt-rich-table th),
+.wt-dynamic-body :deep(.wt-rich-table td) {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  text-align: left;
+  vertical-align: top;
+}
+
+.wt-dynamic-body :deep(.wt-rich-table th) {
+  background: rgba(148, 163, 184, 0.12);
+  font-weight: 700;
+}
+
 .wt-dynamic-image {
   display: block;
   width: 100%;
