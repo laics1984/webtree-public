@@ -43,6 +43,29 @@ const nodeStyles = computed(() => {
 const renderedBody = computed(() => renderCmsBodyToHtml(item?.body))
 
 const galleryPhotos = computed(() => item?.gallery ?? [])
+
+/**
+ * Show the full-size photo when its thumbnail is missing.
+ *
+ * Every gallery photo is published at both sizes, but the API cannot know
+ * whether the resized copy was actually written — a per-photo existence check
+ * would be a request per photo per render — and for a stretch the CMS wrote no
+ * thumbnails at all, so the stored ones 404. Without this the visitor's whole
+ * experience of a gallery is a grid of broken images.
+ *
+ * `data-wt-full` is deliberately left alone: the lightbox opens that, and
+ * readGroupImages() arms a tile on its class and `src`, not on the two
+ * differing — so a tile that has fallen back still enlarges correctly.
+ */
+function showOriginalOnError(event: Event, originalSrc: string) {
+  const tile = event.target as HTMLImageElement | null
+
+  // Once per tile. If the original is missing too, swapping again would spin.
+  if (!tile || !originalSrc || tile.dataset.wtThumbnailFallback === 'done') return
+
+  tile.dataset.wtThumbnailFallback = 'done'
+  tile.src = originalSrc
+}
 </script>
 
 <template>
@@ -121,6 +144,8 @@ const galleryPhotos = computed(() => item?.gallery ?? [])
     `data-wt-node-id` and reads the tiles by their `wt-image` class, so both are
     part of the contract rather than styling. Tiles show the stored thumbnail
     and name their original in `data-wt-full`, which is what the viewer opens.
+    A thumbnail that was never written falls back to that original rather than
+    rendering as a broken image — see showOriginalOnError().
 
     A caption doubles as the alt text: an author's own words describe the photo
     better than a generated "photo 3 of 9" ever could. The viewer marks its
@@ -143,6 +168,7 @@ const galleryPhotos = computed(() => item?.gallery ?? [])
       :alt="photo.caption || `${item.title} — photo ${position + 1} of ${galleryPhotos.length}`"
       loading="lazy"
       decoding="async"
+      @error="showOriginalOnError($event, photo.src)"
     />
   </div>
 

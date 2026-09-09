@@ -11,11 +11,15 @@ import { normalizeHostname } from '~/lib/host'
  * instead of the bucket.
  *
  * Assets therefore moved to `asset.fowable.com`, which sits on the *fowable.com*
- * zone and is out of reach of a `myfowable.com` route entirely. New URLs are
- * built from that host at request time (`AWS_URL` on the API,
- * `VITE_ASSET_PUBLIC_URL` in the admin app), so this redirect exists for what is
- * already out there: CDN caches, bookmarks, and anything that hard-coded the old
- * host before the move.
+ * zone and is out of reach of a `myfowable.com` route entirely. Every new URL is
+ * built from that host at request time, by the API alone — it is `AWS_URL` on
+ * the storage disk, and `Storage::url()` is the only thing that turns a stored
+ * key into a URL. Readers are handed the result; none of them builds one. The
+ * admin app used to, from its own `VITE_ASSET_PUBLIC_URL` plus a hand-copied
+ * bucket prefix, and that copy was missing a path segment in production.
+ *
+ * This redirect exists for what is already out there: CDN caches, bookmarks, and
+ * anything that hard-coded the old host before the move.
  *
  * 301 rather than 302: the move is permanent, and letting caches and crawlers
  * remember it is the point.
