@@ -89,6 +89,27 @@ export function getNodeChildren(node?: PublicBlockNode | null): PublicBlockNode[
   return []
 }
 
+// The write side of `getNodeChildren`: puts children back under the same key
+// they were read from, so a payload that nests them under `props` does not end
+// up with two child lists and the runtime reading the untouched one.
+export function withNodeChildren(
+  node: PublicBlockNode,
+  children: PublicBlockNode[]
+): PublicBlockNode {
+  if (Array.isArray(node.children)) return { ...node, children }
+  if (Array.isArray(node.elements)) return { ...node, elements: children }
+  if (Array.isArray(node.content)) return { ...node, content: children }
+
+  const props = getPropsRecord(node)
+  for (const key of ['children', 'elements', 'content'] as const) {
+    if (Array.isArray(props?.[key])) {
+      return { ...node, props: { ...props, [key]: children } }
+    }
+  }
+
+  return node
+}
+
 export function getNodeKey(node: PublicBlockNode, index: number): string {
   const key = node.id ?? node._key ?? node.type ?? 'block'
   return `${String(key)}:${index}`
@@ -131,16 +152,18 @@ export function normalizeBlockType(type?: string | null): string {
 // fields). This peels one body-root level; a schema that is already a flat
 // section list (older sites, or a header/footer schema) is returned unchanged,
 // so it is safe to route every body-section lookup through it.
+export function isBodyRootNode(node?: PublicBlockNode | null): boolean {
+  if (!node) return false
+  const type = normalizeBlockType((node as Record<string, unknown>).type as string | undefined)
+  return type === 'body' || getNodeName(node) === 'Body'
+}
+
 export function normalizeBodySectionNodes(schema?: SchemaInput): PublicBlockNode[] {
   const nodes = normalizeSchemaNodes(schema)
-  if (nodes.length === 1) {
-    const only = nodes[0]
-    const type = normalizeBlockType((only as Record<string, unknown>)?.type as string | undefined)
-    if (type === 'body' || getNodeName(only) === 'Body') {
-      const inner = getNodeChildren(only)
-      if (inner.length > 0) {
-        return inner
-      }
+  if (nodes.length === 1 && isBodyRootNode(nodes[0])) {
+    const inner = getNodeChildren(nodes[0])
+    if (inner.length > 0) {
+      return inner
     }
   }
   return nodes

@@ -19,12 +19,11 @@ import {
   readBandRects,
 } from '~/lib/adaptiveInk'
 import { isFirstSectionHeaderOverlaySafe } from '~/lib/headerOverlay'
+import { withHeaderOverlayClearance } from '~/lib/headerOverlayClearance'
 import { buildResponsiveStylesheet } from '~/lib/responsiveRuntime'
 import {
   findFirstNonBreadcrumbNode,
   getNodeChildren,
-  getNodeName,
-  isHeroSectionName,
   normalizeBodySectionNodes,
   normalizeSchemaNodes,
 } from '~/lib/schema'
@@ -322,10 +321,21 @@ const firstSectionOverlaySafe = computed(() =>
 // generator asked for overlay site-wide AND this page's first section is
 // marked overlay-safe. behavior.overlay stays the site-wide kill switch for
 // marker-carrying sites.
+//
+// A SELF-CHROME bar (the floating pill, `behavior.adaptiveInk`) needs no
+// marker. The marker exists to protect the transparent phase's white ink,
+// which needs a dark hero under it — and a self-chrome bar has no such phase:
+// it keeps its own tinted chrome while overlaid (ContainerBlock strips the
+// header root, never the `headerBar`) and stays legible against that. Only
+// the generator stamps the marker, so without this a pill floated in the
+// builder sat in a page-background band on the published site for every page
+// whose sections were authored there. Whatever it floats over is cleared by
+// the overlay spacer below, so its content is never left under the bar.
 const wantsHeaderOverlay = computed(
   () =>
     heroIsBackgroundLayout.value ||
-    (staticHeaderOverlay.value && firstSectionOverlaySafe.value)
+    (staticHeaderOverlay.value &&
+      (firstSectionOverlaySafe.value || headerAdaptiveInk.value))
 )
 
 const runtimeHeaderOverlay = computed(() => {
@@ -386,15 +396,12 @@ const headerRootMinHeight = computed(() => {
     : HEADER_OVERLAY_SPACER_FALLBACK_MIN_HEIGHT
 })
 
-const firstBodySectionIsHero = computed(() => {
-  const nodes = normalizeBodySectionNodes(props.bodySchema as any)
-  const first = findFirstNonBreadcrumbNode(nodes)?.node
-  return Boolean(first && isHeroSectionName(getNodeName(first)))
-})
-
-const shouldSpaceFirstSectionForOverlay = computed(
-  () => runtimeHeaderOverlay.value && firstBodySectionIsHero.value
-)
+// Whatever the header floats over needs the clearance — the float and the
+// spacer have to come from one condition. Gating this on "the first section
+// is a Hero" left every other opening section (a sub-page's breadcrumb, an
+// interior page's intro band) under the bar with nothing to push its content
+// back down.
+const shouldSpaceFirstSectionForOverlay = computed(() => runtimeHeaderOverlay.value)
 
 const headerOverlaySpacerPaddingTop = computed(() =>
   shouldSpaceFirstSectionForOverlay.value
@@ -412,10 +419,22 @@ const globalHeroMinHeight = computed(() => {
   const minHeight = hero && typeof hero === 'object' && !Array.isArray(hero) ? hero.minHeight : null
   return typeof minHeight === 'string' && minHeight.trim().length > 0 ? minHeight : undefined
 })
+// The responsive stylesheet is built from the SPACED body, not the raw one:
+// its rules are emitted `!important`, so a hero's own mobile `padding-top`
+// would otherwise put the content straight back under the floating header on
+// a phone. SchemaRenderer spaces the same tree with the same function, so the
+// inline styles and these rules always agree.
+const spacedBodySchema = computed(() =>
+  withHeaderOverlayClearance(
+    normalizeSchemaNodes(props.bodySchema as any),
+    headerOverlaySpacerPaddingTop.value,
+    globalHeroMinHeight.value
+  )
+)
 const responsiveCss = computed(() =>
   buildResponsiveStylesheet({
     headerSchema: props.site?.headerSchema,
-    bodySchema: props.bodySchema,
+    bodySchema: spacedBodySchema.value,
     footerSchema: props.site?.footerSchema,
   })
 )
