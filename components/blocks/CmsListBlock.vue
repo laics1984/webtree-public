@@ -17,12 +17,18 @@ import { resolveContentItemHref } from '~/lib/contentLink'
 import { contentPrefixesKey } from '~/lib/contentPrefixes'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
 import { getRequestHost } from '~/lib/host'
-import { formatDate, formatRange } from '~/lib/dateFormat'
+import { contentMetaList, type ContentMetaKind } from '~/lib/contentMeta'
 import { currentListingKey } from '~/lib/currentListing'
+import { useHydratedNow } from '~/composables/useHydratedNow'
+import ContentMetaIcon from '~/components/public/ContentMetaIcon.vue'
 
 defineOptions({ name: 'CmsListBlock' })
 
 const props = defineProps<{ node: PublicBlockNode }>()
+
+// The reader's clock, known only after hydration — see useHydratedNow. Taken
+// before the list's `await` below, so the mount hook binds to this instance.
+const now = useHydratedNow()
 
 const DEFAULT_HEADING: Record<CmsContentSource, string> = {
   articles: 'Latest Articles',
@@ -336,6 +342,16 @@ const sectionDomId = computed(() => getNodeDomId(props.node) || undefined)
 
 const featured = computed(() => visibleItems.value[0])
 const featuredRest = computed(() => visibleItems.value.slice(1))
+
+/** What a card states under its title, in order — the builder's cms-list.tsx draws the same. */
+const cardMetaKinds = computed<ContentMetaKind[]>(() => {
+  if (source.value === 'events') return ['eventDate', 'location']
+  return content.value.showAuthor ? ['articleDate', 'author'] : ['articleDate']
+})
+
+function cardMeta(item: PublicContentItem) {
+  return contentMetaList(cardMetaKinds.value, item, now.value)
+}
 </script>
 
 <template>
@@ -436,32 +452,14 @@ const featuredRest = computed(() => visibleItems.value.slice(1))
             v-if="content.showMeta"
             class="wt-cms-card__meta"
           >
-            <template v-if="source === 'articles'">
-              <span v-if="formatDate(item.publish)" class="wt-cms-card__meta-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                {{ formatDate(item.publish) }}
-              </span>
-              <span
-                v-if="content.showAuthor && item.author?.name"
-                class="wt-cms-card__meta-item"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
-                {{ item.author.name }}
-              </span>
-            </template>
-            <template v-else>
-              <span
-                v-if="formatRange(item.start, item.end) || formatDate(item.publish)"
-                class="wt-cms-card__meta-item"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                {{ formatRange(item.start, item.end) || formatDate(item.publish) }}
-              </span>
-              <span v-if="item.location" class="wt-cms-card__meta-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z" /><circle cx="12" cy="10" r="3" /></svg>
-                {{ item.location }}
-              </span>
-            </template>
+            <span
+              v-for="meta in cardMeta(item)"
+              :key="meta.kind"
+              class="wt-cms-card__meta-item"
+            >
+              <ContentMetaIcon :name="meta.icon" />
+              {{ meta.label }}
+            </span>
           </div>
         </div>
       </component>
@@ -512,32 +510,14 @@ const featuredRest = computed(() => visibleItems.value.slice(1))
             </span>
           </div>
           <div v-if="content.showMeta" class="wt-cms-card__meta">
-            <template v-if="source === 'articles'">
-              <span v-if="formatDate(featured.publish)" class="wt-cms-card__meta-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                {{ formatDate(featured.publish) }}
-              </span>
-              <span
-                v-if="content.showAuthor && featured.author?.name"
-                class="wt-cms-card__meta-item"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
-                {{ featured.author.name }}
-              </span>
-            </template>
-            <template v-else>
-              <span
-                v-if="formatRange(featured.start, featured.end) || formatDate(featured.publish)"
-                class="wt-cms-card__meta-item"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                {{ formatRange(featured.start, featured.end) || formatDate(featured.publish) }}
-              </span>
-              <span v-if="featured.location" class="wt-cms-card__meta-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z" /><circle cx="12" cy="10" r="3" /></svg>
-                {{ featured.location }}
-              </span>
-            </template>
+            <span
+              v-for="meta in cardMeta(featured)"
+              :key="meta.kind"
+              class="wt-cms-card__meta-item"
+            >
+              <ContentMetaIcon :name="meta.icon" />
+              {{ meta.label }}
+            </span>
           </div>
         </div>
       </component>
@@ -583,32 +563,14 @@ const featuredRest = computed(() => visibleItems.value.slice(1))
               </span>
             </div>
             <div v-if="content.showMeta" class="wt-cms-card__meta">
-              <template v-if="source === 'articles'">
-                <span v-if="formatDate(item.publish)" class="wt-cms-card__meta-item">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                  {{ formatDate(item.publish) }}
-                </span>
-                <span
-                  v-if="content.showAuthor && item.author?.name"
-                  class="wt-cms-card__meta-item"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
-                  {{ item.author.name }}
-                </span>
-              </template>
-              <template v-else>
-                <span
-                  v-if="formatRange(item.start, item.end) || formatDate(item.publish)"
-                  class="wt-cms-card__meta-item"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                  {{ formatRange(item.start, item.end) || formatDate(item.publish) }}
-                </span>
-                <span v-if="item.location" class="wt-cms-card__meta-item">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z" /><circle cx="12" cy="10" r="3" /></svg>
-                  {{ item.location }}
-                </span>
-              </template>
+              <span
+                v-for="meta in cardMeta(item)"
+                :key="meta.kind"
+                class="wt-cms-card__meta-item"
+              >
+                <ContentMetaIcon :name="meta.icon" />
+                {{ meta.label }}
+              </span>
             </div>
           </div>
         </component>
@@ -660,32 +622,14 @@ const featuredRest = computed(() => visibleItems.value.slice(1))
             </span>
           </div>
           <div v-if="content.showMeta" class="wt-cms-card__meta">
-            <template v-if="source === 'articles'">
-              <span v-if="formatDate(item.publish)" class="wt-cms-card__meta-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                {{ formatDate(item.publish) }}
-              </span>
-              <span
-                v-if="content.showAuthor && item.author?.name"
-                class="wt-cms-card__meta-item"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
-                {{ item.author.name }}
-              </span>
-            </template>
-            <template v-else>
-              <span
-                v-if="formatRange(item.start, item.end) || formatDate(item.publish)"
-                class="wt-cms-card__meta-item"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
-                {{ formatRange(item.start, item.end) || formatDate(item.publish) }}
-              </span>
-              <span v-if="item.location" class="wt-cms-card__meta-item">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z" /><circle cx="12" cy="10" r="3" /></svg>
-                {{ item.location }}
-              </span>
-            </template>
+            <span
+              v-for="meta in cardMeta(item)"
+              :key="meta.kind"
+              class="wt-cms-card__meta-item"
+            >
+              <ContentMetaIcon :name="meta.icon" />
+              {{ meta.label }}
+            </span>
           </div>
         </div>
       </component>

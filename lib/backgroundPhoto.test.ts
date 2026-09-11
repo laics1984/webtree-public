@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest'
 import {
   BACKGROUND_VIDEO_POSTER_STYLE,
   BACKGROUND_VIDEO_SRC_STYLE,
+  CONTENT_COVER_VAR,
+  contentCoverStyle,
   getBackgroundVideoSettings,
   hasBackgroundImage,
   hasBackgroundVideo,
   isPhotoSource,
+  usesContentCover,
 } from './backgroundPhoto'
+import type { PublicBlockNode } from '~/types/public'
 
 describe('isPhotoSource', () => {
   it('detects a plain photo url', () => {
@@ -123,5 +127,36 @@ describe('hasBackgroundVideo', () => {
     expect(hasBackgroundVideo({ [BACKGROUND_VIDEO_SRC_STYLE]: 'https://x/bg.mp4' })).toBe(true)
     expect(hasBackgroundVideo({ [BACKGROUND_VIDEO_POSTER_STYLE]: 'https://x/p.jpg' })).toBe(false)
     expect(hasBackgroundVideo({})).toBe(false)
+  })
+})
+
+describe('the content cover', () => {
+  const COVER_LAYER = `var(${CONTENT_COVER_VAR}, none)`
+  const SCRIM = 'linear-gradient(rgba(15,23,42,0.55), rgba(15,23,42,0.55))'
+
+  it('is a photo, alone or under a scrim — so it gets the photo layer', () => {
+    expect(isPhotoSource(COVER_LAYER)).toBe(true)
+    expect(hasBackgroundImage({ backgroundImage: `${SCRIM}, ${COVER_LAYER}` })).toBe(true)
+  })
+
+  it("hands the item's cover down escaped, or none without one", () => {
+    expect(contentCoverStyle('https://x.com/a "b".jpg')).toEqual({
+      [CONTENT_COVER_VAR]: 'url("https://x.com/a \\"b\\".jpg")',
+    })
+    expect(contentCoverStyle(null)).toEqual({ [CONTENT_COVER_VAR]: 'none' })
+  })
+
+  it('is found wherever a template paints it', () => {
+    const hero = {
+      type: 'container',
+      name: 'Cover Hero',
+      styles: { backgroundImage: `${SCRIM}, ${COVER_LAYER}` },
+      content: [],
+    } as unknown as PublicBlockNode
+    const body = { type: '__body', content: [hero] } as unknown as PublicBlockNode
+    const plain = { type: 'container', styles: { backgroundColor: '#fff' }, content: [] } as unknown as PublicBlockNode
+
+    expect(usesContentCover([body])).toBe(true)
+    expect(usesContentCover([plain])).toBe(false)
   })
 })

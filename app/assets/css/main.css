@@ -1,5 +1,8 @@
 @import "tailwindcss";
-@source inline("h-auto h-full h-40 h-64 h-96 w-auto w-full w-1/2 w-1/3 w-2/3");
+/* The builder's preset classes, which Tailwind finds nowhere in this repo's own
+   source: its height and width presets, and its Text Align presets. Keep in
+   lockstep with the builder's right panel (settings-panel.tsx). */
+@source inline("h-auto h-full h-40 h-64 h-96 w-auto w-full w-1/2 w-1/3 w-2/3 text-left text-center text-right text-justify");
 
 @theme {
   --color-wt-primary: #2563eb;

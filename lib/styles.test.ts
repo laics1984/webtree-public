@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCssVars } from './styles'
+import { buildCssVars, hasOwnTextColor } from './styles'
 
 describe('buildCssVars page width', () => {
   it('emits the px cap for contained pages', () => {
@@ -61,5 +61,23 @@ describe('buildCssVars hero typography (Apply to all heroes)', () => {
   it('omits all hero typography tokens when absent', () => {
     expect(buildCssVars(null)['--builder-hero-heading-size']).toBeUndefined()
     expect(buildCssVars({})['--builder-hero-body-size']).toBeUndefined()
+  })
+})
+
+describe('hasOwnTextColor', () => {
+  // The colour every builder element is created with reads as "Default".
+  it('is false for the default text-colour token, with or without a fallback', () => {
+    expect(hasOwnTextColor({ color: 'var(--builder-color-text, #111827)' })).toBe(false)
+    expect(hasOwnTextColor({ color: 'var(--builder-color-text)' })).toBe(false)
+  })
+
+  it('is true for any colour someone chose', () => {
+    expect(hasOwnTextColor({ color: '#e11d48' })).toBe(true)
+    expect(hasOwnTextColor({ color: 'var(--builder-color-primary)' })).toBe(true)
+  })
+
+  it('is false without a colour', () => {
+    expect(hasOwnTextColor({})).toBe(false)
+    expect(hasOwnTextColor(null)).toBe(false)
   })
 })
