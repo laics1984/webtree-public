@@ -1,3 +1,7 @@
+import { getNodeStyles } from '~/lib/blockRuntime'
+import { getNodeChildren } from '~/lib/schema'
+import type { PublicBlockNode } from '~/types/public'
+
 export const BACKGROUND_PHOTO_OPACITY_STYLE = '--builder-background-photo-opacity'
 export const BACKGROUND_PHOTO_OVERLAY_COLOR_STYLE = '--builder-background-photo-overlay-color'
 export const BACKGROUND_PHOTO_OVERLAY_OPACITY_STYLE = '--builder-background-photo-overlay-opacity'
@@ -8,6 +12,16 @@ export const BACKGROUND_PHOTO_OVERLAY_OPACITY_STYLE = '--builder-background-phot
 // can consume src/poster directly. Mirror of builder/src/lib/background-photo.ts.
 export const BACKGROUND_VIDEO_SRC_STYLE = '--builder-background-video-src'
 export const BACKGROUND_VIDEO_POSTER_STYLE = '--builder-background-video-poster'
+
+// The CONTENT COVER: the cover photo of the article or event a detail page
+// renders. A detail template's cover hero paints it as one layer of its
+// background (`var(--wt-content-cover, none)`), so one template shows every
+// item's own cover — ContentDetail sets it from the item. Anywhere else it is
+// unset, the layer is `none`, and the band shows its scrim over its colour.
+// Mirror of builder/src/lib/background-photo.ts → keep in lockstep, and of the
+// CMS API's MediaUrlResolver::isContentCoverLayer, which lets this one layer
+// through the whitelist every published page is served through.
+export const CONTENT_COVER_VAR = '--wt-content-cover'
 
 export const DEFAULT_BACKGROUND_PHOTO_OPACITY = 100
 export const DEFAULT_BACKGROUND_PHOTO_OVERLAY_COLOR = '#000000'
@@ -172,15 +186,47 @@ export const isPhotoUrlMatch = (inner: string): boolean => {
  * Note: a value may legitimately combine BOTH — the generator emits
  * `linear-gradient(overlay), url('photo')` for brand-tinted hero photos. Such
  * a value still counts as a photo because it contains a real (non-decorative) url().
+ * So does the content cover: a photo, just a different one for each item.
  */
 export const isPhotoSource = (value: string): boolean => {
   const v = value.trim()
   if (!v || v === 'none') return false
+  if (referencesContentCover(v)) return true
   // Collect every url(...) reference. A bare gradient has none → not a photo.
   const urls = v.match(/url\(\s*['"]?\s*[^'")]+/gi)
   if (!urls) return false
   return urls.some((u) => isPhotoUrlMatch(u.replace(/^url\(\s*['"]?\s*/i, '')))
 }
+
+/** `src` as a CSS image, quoted and escaped so any URL survives inside a style value. */
+const cssImageUrl = (src: string) =>
+  `url("${src.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}")`
+
+/** Whether a `background-image` value — or one layer of it — paints the content cover. */
+export const referencesContentCover = (value: string): boolean =>
+  value.includes(`var(${CONTENT_COVER_VAR}`)
+
+/**
+ * The style that hands an item's cover to every content-cover layer inside it
+ * — `none` for an item without one. ContentDetail sets it on the rendered tree.
+ */
+export const contentCoverStyle = (src: string | null | undefined): Record<string, string> => ({
+  [CONTENT_COVER_VAR]: src ? cssImageUrl(src) : 'none',
+})
+
+/**
+ * Whether any node of `nodes` paints the content cover: a detail template with
+ * a cover hero, whose largest image is then a CSS background — one the browser
+ * only discovers once it has the styles.
+ */
+export const usesContentCover = (nodes: PublicBlockNode[]): boolean =>
+  nodes.some((node) => {
+    const backgroundImage = getNodeStyles(node).backgroundImage
+    return (
+      (typeof backgroundImage === 'string' && referencesContentCover(backgroundImage)) ||
+      usesContentCover(getNodeChildren(node))
+    )
+  })
 
 export const hasBackgroundImage = (styles?: Record<string, unknown> | null) => {
   const value = styles?.backgroundImage

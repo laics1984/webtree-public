@@ -5,9 +5,12 @@ import { getNodeClasses, getNodeStyles } from '~/lib/blockRuntime'
 import { currentItemKey } from '~/lib/currentItem'
 import { currentListingKey } from '~/lib/currentListing'
 import { contentPrefixesKey } from '~/lib/contentPrefixes'
-import { formatDate, formatRange } from '~/lib/dateFormat'
+import { contentMeta, type ContentMetaKind } from '~/lib/contentMeta'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
+import { useHydratedNow } from '~/composables/useHydratedNow'
+import ContentMetaIcon from '~/components/public/ContentMetaIcon.vue'
 import { renderCmsBodyToHtml } from '~/lib/cmsRichText'
+import { hasOwnTextColor } from '~/lib/styles'
 
 defineOptions({ name: 'DynamicFieldBlock' })
 
@@ -43,6 +46,26 @@ const nodeStyles = computed(() => {
 const renderedBody = computed(() => renderCmsBodyToHtml(item?.body))
 
 const galleryPhotos = computed(() => item?.gallery ?? [])
+
+// An article category's pills take the field's own ink once it has one; until
+// then they keep the brand colour (see hasOwnTextColor).
+const categoryHasOwnInk = computed(() => hasOwnTextColor(nodeStyles.value))
+
+/** The single-fact fields — date, author, location — and the fact each shows. */
+const META_FIELD_KIND: Record<string, ContentMetaKind> = {
+  articledate: 'articleDate',
+  eventdate: 'eventDate',
+  articleauthor: 'author',
+  eventlocation: 'location',
+}
+
+// The reader's clock, known only after hydration — see useHydratedNow.
+const now = useHydratedNow()
+
+const meta = computed(() => {
+  const kind = META_FIELD_KIND[fieldType.value]
+  return kind && item ? contentMeta(kind, item, now.value) : null
+})
 
 /**
  * Show the full-size photo when its thumbnail is missing.
@@ -172,61 +195,46 @@ function showOriginalOnError(event: Event, originalSrc: string) {
     />
   </div>
 
+  <!--
+    Date, author and location: an icon and a label, as the builder draws them.
+    The row is inline inside the node so the author's text-align places it the
+    way the canvas does. Nothing renders when the item lacks the fact.
+  -->
   <p
-    v-else-if="fieldType === 'articledate'"
+    v-else-if="meta"
     class="wt-dynamic-meta"
     :class="nodeClasses"
     :style="nodeStyles"
     :data-wt-node-id="nodeDomId"
   >
-    {{ formatDate(item.publish) }}
+    <span class="wt-dynamic-meta__line">
+      <ContentMetaIcon :name="meta.icon" />
+      {{ meta.label }}
+    </span>
   </p>
 
-  <p
-    v-else-if="fieldType === 'eventdate'"
-    class="wt-dynamic-meta"
-    :class="nodeClasses"
-    :style="nodeStyles"
-    :data-wt-node-id="nodeDomId"
-  >
-    {{ formatRange(item.start, item.end) || formatDate(item.publish) }}
-  </p>
-
-  <p
-    v-else-if="fieldType === 'articleauthor' && item.author?.name"
-    class="wt-dynamic-meta"
-    :class="nodeClasses"
-    :style="nodeStyles"
-    :data-wt-node-id="nodeDomId"
-  >
-    {{ item.author.name }}
-  </p>
-
-  <p
-    v-else-if="fieldType === 'eventlocation' && item.location"
-    class="wt-dynamic-meta"
-    :class="nodeClasses"
-    :style="nodeStyles"
-    :data-wt-node-id="nodeDomId"
-  >
-    {{ item.location }}
-  </p>
-
+  <!--
+    Category pills, typed by the field itself: the node carries its styles and
+    the pills inherit them — its ink too, once it has one of its own. The row
+    sits inline, so the field's text-align places it, as on the canvas.
+  -->
   <div
     v-else-if="fieldType === 'articlecategory' && item.categories?.length"
     class="wt-dynamic-categories"
-    :class="nodeClasses"
+    :class="[nodeClasses, { 'wt-dynamic-categories--own-ink': categoryHasOwnInk }]"
     :style="nodeStyles"
     :data-wt-node-id="nodeDomId"
   >
-    <NuxtLink
-      v-for="category in item.categories"
-      :key="category.slug"
-      :to="`/${articlePrefix}/category/${category.slug}`"
-      class="wt-dynamic-category-pill"
-    >
-      {{ category.title }}
-    </NuxtLink>
+    <span class="wt-dynamic-categories__row">
+      <NuxtLink
+        v-for="category in item.categories"
+        :key="category.slug"
+        :to="`/${articlePrefix}/category/${category.slug}`"
+        class="wt-dynamic-category-pill"
+      >
+        {{ category.title }}
+      </NuxtLink>
+    </span>
   </div>
 
   <div
@@ -443,34 +451,87 @@ function showOriginalOnError(event: Event, originalSrc: string) {
   object-fit: cover;
 }
 
+/*
+  Mirrored by `.cms-dynamic-gallery` in the builder's src/index.css, which is
+  how the canvas shows what visitors see — change both together.
+
+  Up to four photos per row. A row holding fewer grows its photos to the full
+  width (auto-fill used to leave the unused columns empty). Every row keeps one
+  height — the side of a square tile in a full row of four — so a lone photo
+  becomes a full-width strip, not a giant square. Below four 160px tiles (a
+  narrow column, a phone), rows hold fewer photos.
+
+  Sized in container units off the gallery's own width, not the viewport, so
+  the same block lays out correctly in an article column or a full-bleed
+  section without an author choosing a breakpoint.
+*/
 .wt-dynamic-gallery {
-  display: grid;
-  /* Auto-fill rather than a fixed column count: the same block reads well in a
-     narrow article column and in a full-bleed section without an author
-     choosing a breakpoint. */
-  grid-template-columns: repeat(auto-fill, minmax(min(160px, 100%), 1fr));
+  container-type: inline-size;
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 
 .wt-dynamic-gallery__tile {
-  width: 100%;
-  height: 100%;
-  aspect-ratio: 1 / 1;
+  --wt-gallery-tile: max(min(160px, 100cqw), calc((100cqw - 1.5rem) / 4));
+  /* 1px under the exact quarter so rounding can never push a fourth photo to
+     the next row; flex-grow restores the full width. */
+  flex: 1 1 calc(var(--wt-gallery-tile) - 1px);
+  height: var(--wt-gallery-tile);
+  min-width: 0;
   object-fit: cover;
   border-radius: 8px;
   display: block;
 }
 
+/*
+  Mirrors the builder canvas (dynamic-fields.tsx), which puts the node's styles
+  on a wrapper and draws the row inside it in Tailwind's text-sm and opacity-75,
+  a 16px icon 0.5rem from its label. The same split here: the <p> takes the
+  node's styles (its text-align places the inline row), the row takes the look
+  — so a node's inline `opacity: 100%` cannot undo the 75%, as on the canvas.
+*/
 .wt-dynamic-meta {
-  font-size: 0.875rem;
-  opacity: 0.7;
   margin: 0;
 }
 
+.wt-dynamic-meta__line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  opacity: 0.75;
+  overflow-wrap: anywhere;
+}
+
+.wt-dynamic-meta__line svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/*
+  Article category, typed by the field itself. These are only defaults: the
+  node's own styles (the builder's Typography section) override them on this
+  box and the pills inherit the result, their border and wash following their
+  ink. The ink stays the brand colour until the field has one of its own
+  (`--own-ink`). The row sits inline, so the field's text-align places it.
+  Mirrored by `.cms-dynamic-categories` in the builder's src/index.css —
+  change both together.
+*/
 .wt-dynamic-categories {
-  display: flex;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wt-dynamic-categories__row {
+  display: inline-flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+  max-width: 100%;
+  vertical-align: top;
 }
 
 .wt-dynamic-category-pill {
@@ -478,14 +539,14 @@ function showOriginalOnError(event: Event, originalSrc: string) {
   align-items: center;
   padding: 0.3rem 0.65rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--wt-color-primary, #2563eb) 24%, transparent);
-  background: color-mix(in srgb, var(--wt-color-primary, #2563eb) 8%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  background: color-mix(in srgb, currentColor 8%, transparent);
   color: var(--wt-color-primary, #2563eb);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
   text-decoration: none;
+}
+
+.wt-dynamic-categories--own-ink .wt-dynamic-category-pill {
+  color: inherit;
 }
 
 .wt-dynamic-tags {

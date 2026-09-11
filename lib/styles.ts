@@ -275,3 +275,15 @@ export function buildCssVars(styles?: PublicStyleTokens | null) {
     ...(heroBodySize ? { '--builder-hero-body-size': heroBodySize } : {})
   }
 }
+
+/**
+ * Whether `styles` carry a text colour someone chose: set, and not the
+ * text-colour token every builder element is created with — the builder reads
+ * that as "Default", so a field drawing its own ink (an article category's
+ * pills) keeps its default until the author picks one.
+ * Mirror of hasOwnTextColor in builder src/lib/brand-color-tokens.ts.
+ */
+export function hasOwnTextColor(styles: { color?: unknown } | null | undefined): boolean {
+  const color = typeof styles?.color === 'string' ? styles.color.trim() : ''
+  return color !== '' && !color.startsWith('var(--builder-color-text')
+}
