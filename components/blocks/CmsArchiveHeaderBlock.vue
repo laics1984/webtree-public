@@ -109,7 +109,7 @@ const imgStyle = computed(() => {
   font-size: 2rem;
   font-weight: 700;
   line-height: 1.2;
-  color: var(--wt-color-heading, inherit);
+  color: var(--builder-color-heading, inherit);
   font-family: var(--wt-font-heading, inherit);
 }
 

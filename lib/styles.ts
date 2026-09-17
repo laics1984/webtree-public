@@ -77,11 +77,13 @@ function contrastRatio(foreground: string, background: string): number {
   return (lighter + 0.05) / (darker + 0.05)
 }
 
+const HEX_COLOR = /^#[0-9a-f]{6}$/i
+
 // Nudge `foreground` lighter/darker (preserving hue/saturation) until it
 // clears `minRatio` against `background`. Falls back to pure black/white if
 // nothing on that hue clears the bar.
 function ensureContrast(foreground: string, background: string, minRatio = 4.5): string {
-  if (!/^#[0-9a-f]{6}$/i.test(foreground) || !/^#[0-9a-f]{6}$/i.test(background)) {
+  if (!HEX_COLOR.test(foreground) || !HEX_COLOR.test(background)) {
     return foreground
   }
   if (contrastRatio(foreground, background) >= minRatio) return foreground
@@ -95,6 +97,23 @@ function ensureContrast(foreground: string, background: string, minRatio = 4.5):
     if (l === 0 || l === 100) break
   }
   return goDarker ? '#000000' : '#ffffff'
+}
+
+// Ink for a heading the renderer paints itself on the page background — a CMS
+// list's heading and card titles, an archive title. `secondary` is the heading
+// ink of a light palette, but on a dark one it is the darkest band colour:
+// near-black on a near-black page. So it is used where it reads, and `text` —
+// 7:1 against `background` in every palette by construction — where it
+// doesn't. On a generated palette that is the generator's own rule (`text` on
+// a dark scheme, else `secondary`), answered from the colours because the
+// scheme never reaches the wire. Keep in lockstep with builder
+// src/lib/builder-styles.ts (toBuilderCssVars).
+function headingInk(secondary: string, text: string, background: string): string {
+  const unreadable =
+    HEX_COLOR.test(secondary) &&
+    HEX_COLOR.test(background) &&
+    contrastRatio(secondary, background) < 4.5
+  return unreadable ? text : secondary
 }
 
 const DEFAULT_CSS_VARS = {
@@ -221,7 +240,12 @@ export function buildCssVars(styles?: PublicStyleTokens | null) {
   // under AA. Keep in lockstep with builder src/lib/builder-styles.ts
   // (toBuilderCssVars) and site-generator ThemeTokens.to_builder_styles.
   const primaryInkColor = getNestedStyleValue(styles, ['colors', 'primaryInk']) || directVars['--builder-color-primary-ink'] || ensureContrast(primaryColor, backgroundColor, 4.5)
-  const mutedColor = getNestedStyleValue(styles, ['colors', 'muted']) || directVars['--wt-color-muted'] || DEFAULT_CSS_VARS['--wt-color-muted']
+  // No palette carries a muted colour, so this was always the light theme's
+  // grey — 4.1:1 on a dark page, under every archive description, form label
+  // and blockquote. Every consumer sits on the page background, so the grey is
+  // held to AA against it: unchanged on a light palette (4.8:1 on white),
+  // lifted just enough on a dark one.
+  const mutedColor = getNestedStyleValue(styles, ['colors', 'muted']) || directVars['--wt-color-muted'] || ensureContrast(DEFAULT_CSS_VARS['--wt-color-muted'], backgroundColor, 4.5)
   const bodyFont = getNestedStyleValue(styles, ['fonts', 'body']) || getNestedStyleValue(styles, ['typography', 'bodyFont']) || directVars['--wt-font-body'] || DEFAULT_CSS_VARS['--wt-font-body']
   const headingFont = getNestedStyleValue(styles, ['fonts', 'heading']) || getNestedStyleValue(styles, ['typography', 'headingFont']) || directVars['--wt-font-heading'] || bodyFont
   const buttonBackground = getNestedStyleValue(styles, ['buttons', 'background']) || primaryColor
@@ -259,6 +283,7 @@ export function buildCssVars(styles?: PublicStyleTokens | null) {
     '--builder-color-primary': primaryColor,
     '--builder-color-primary-ink': primaryInkColor,
     '--builder-color-secondary': secondaryColor,
+    '--builder-color-heading': headingInk(secondaryColor, textColor, backgroundColor),
     '--builder-color-accent': accentColor,
     '--builder-color-text': textColor,
     '--builder-color-background': backgroundColor,
