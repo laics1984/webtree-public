@@ -293,10 +293,6 @@ function paginationHref(page: number): string {
 
 const layout = computed(() => content.value.layout)
 
-const desktopGridClass = computed(() =>
-  visibleItems.value.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
-)
-
 const nuxtLink = resolveComponent('NuxtLink')
 
 function itemHref(item: PublicContentItem): string | null {
@@ -694,7 +690,19 @@ function cardMeta(item: PublicContentItem) {
 </template>
 
 <style scoped>
+/*
+ * Everything inside the list answers to the list's OWN width — container
+ * queries and self-sizing grids, never the window. The builder canvas
+ * simulates a device by width rather than by viewport, so a media query there
+ * answers for the wrong device; answered by width, the canvas lays the list out
+ * exactly as a published page does. Mirrored in builder
+ * src/components/tabs/editor-components/cms-list.tsx and
+ * src/lib/cms-list-layout.ts. Only the section's own gutter stays on the
+ * viewport, where every other section's is. A container cannot size itself to
+ * its content, which is why the section states its width.
+ */
 .wt-cms-list {
+  container: wt-cms-list / inline-size;
   width: 100%;
   padding-top: 72px;
   padding-bottom: 72px;
@@ -728,17 +736,11 @@ function cardMeta(item: PublicContentItem) {
 
 .wt-cms-list__heading {
   font-family: var(--wt-font-heading, Inter, Arial, sans-serif);
-  color: var(--builder-color-secondary, var(--wt-color-text, #0f172a));
+  color: var(--builder-color-heading, var(--wt-color-text, #0f172a));
   font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.2;
   margin: 0;
-}
-
-@media (min-width: 640px) {
-  .wt-cms-list__heading {
-    font-size: 2rem;
-  }
 }
 
 .wt-cms-list__description {
@@ -748,13 +750,6 @@ function cardMeta(item: PublicContentItem) {
   line-height: 1.6;
   font-size: 0.95rem;
   opacity: 0.75;
-}
-
-@media (min-width: 640px) {
-  .wt-cms-list__description {
-    font-size: 1rem;
-    line-height: 1.7;
-  }
 }
 
 .wt-cms-list__placeholder {
@@ -770,49 +765,52 @@ function cardMeta(item: PublicContentItem) {
   text-align: center;
 }
 
-.wt-cms-list__list {
+/*
+ * A column of cards is a container too: a horizontal card lays its photo
+ * beside its text only when the column it sits in is wide enough for both.
+ */
+.wt-cms-list__list,
+.wt-cms-list__featured-rest {
+  container: wt-cms-column / inline-size;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+/*
+ * As many columns as fit at --wt-cms-column-min each, never more than
+ * --wt-cms-columns-max. One rule for every width, so no breakpoint strands a
+ * tablet in a squeezed four-up grid or a large phone in one card per row.
+ * The builder canvas uses this declaration verbatim (CMS_GRID_TEMPLATE_COLUMNS in
+ * its cms-list-layout.ts).
+ */
+.wt-cms-list__grid,
+.wt-cms-list__featured {
+  --wt-cms-gap: 1.25rem;
+  display: grid;
+  gap: var(--wt-cms-gap);
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(
+      min(100%, max(var(--wt-cms-column-min), (100% - (var(--wt-cms-columns-max) - 1) * var(--wt-cms-gap)) / var(--wt-cms-columns-max))),
+      1fr
+    )
+  );
 }
 
 .wt-cms-list__grid {
-  display: grid;
-  gap: 1.25rem;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
+  --wt-cms-column-min: 16rem;
+  --wt-cms-columns-max: 3;
 }
 
-@media (min-width: 768px) {
-  .wt-cms-list__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+.wt-cms-list__grid[data-grid-density='four'] {
+  --wt-cms-columns-max: 4;
 }
 
-@media (min-width: 1024px) {
-  .wt-cms-list__grid[data-grid-density='three'] {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .wt-cms-list__grid[data-grid-density='four'] {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
+/* The featured card and the column beside it; the column must fit a horizontal card. */
 .wt-cms-list__featured {
-  display: grid;
-  gap: 1.25rem;
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 1024px) {
-  .wt-cms-list__featured {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.wt-cms-list__featured-rest {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  --wt-cms-column-min: 26rem;
+  --wt-cms-columns-max: 2;
 }
 
 .wt-cms-card {
@@ -837,7 +835,7 @@ function cardMeta(item: PublicContentItem) {
   flex-direction: column;
 }
 
-@media (min-width: 640px) {
+@container wt-cms-column (width >= 26rem) {
   .wt-cms-card--horizontal {
     flex-direction: row;
   }
@@ -899,25 +897,13 @@ function cardMeta(item: PublicContentItem) {
   padding: 1rem;
 }
 
-@media (min-width: 640px) {
-  .wt-cms-card__body {
-    padding: 1.25rem;
-  }
-}
-
 .wt-cms-card__body--featured {
   gap: 0.75rem;
 }
 
-@media (min-width: 640px) {
-  .wt-cms-card__body--featured {
-    padding: 1.5rem;
-  }
-}
-
 .wt-cms-card__title {
   font-family: var(--wt-font-heading, Inter, Arial, sans-serif);
-  color: var(--builder-color-secondary, var(--wt-color-text, #0f172a));
+  color: var(--builder-color-heading, var(--wt-color-text, #0f172a));
   font-size: 1.125rem;
   font-weight: 600;
   line-height: 1.35;
@@ -929,7 +915,28 @@ function cardMeta(item: PublicContentItem) {
   font-size: 1.5rem;
 }
 
-@media (min-width: 640px) {
+/*
+ * Past a phone's width the type and the card padding open up. After the base
+ * rules on purpose: a container query adds no specificity.
+ */
+@container wt-cms-list (width >= 36rem) {
+  .wt-cms-list__heading {
+    font-size: 2rem;
+  }
+
+  .wt-cms-list__description {
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+
+  .wt-cms-card__body {
+    padding: 1.25rem;
+  }
+
+  .wt-cms-card__body--featured {
+    padding: 1.5rem;
+  }
+
   .wt-cms-card__title--featured {
     font-size: 1.875rem;
   }
@@ -960,7 +967,8 @@ function cardMeta(item: PublicContentItem) {
   letter-spacing: 0.12em;
   border: 1px solid color-mix(in srgb, var(--wt-color-primary, #2563eb) 24%, transparent);
   background: color-mix(in srgb, var(--wt-color-primary, #2563eb) 8%, transparent);
-  color: var(--wt-color-primary, #2563eb);
+  /* Small text in the brand hue takes the AA-corrected primary (lib/styles.ts). */
+  color: var(--builder-color-primary-ink, var(--wt-color-primary, #2563eb));
 }
 
 .wt-cms-card__meta {
@@ -1033,10 +1041,16 @@ function cardMeta(item: PublicContentItem) {
   opacity: 0.55;
 }
 
+/*
+ * The current page paints its own surface, so it states its own ink: the
+ * site's button pair, which the generator builds as a pair (>= 4.5:1). The
+ * page background on the brand hue is no pair — near-black on amber measures
+ * 4:1 on a dark palette.
+ */
 .wt-cms-list__pagination-link--active {
-  border-color: var(--builder-color-primary, var(--wt-color-primary, #2563eb));
-  background: var(--builder-color-primary, var(--wt-color-primary, #2563eb));
-  color: var(--builder-color-background, var(--wt-color-bg, #ffffff));
+  border-color: var(--builder-button-background, var(--wt-color-primary, #2563eb));
+  background: var(--builder-button-background, var(--wt-color-primary, #2563eb));
+  color: var(--builder-button-text, #ffffff);
   opacity: 1;
 }
 
@@ -1052,5 +1066,16 @@ function cardMeta(item: PublicContentItem) {
   padding-inline: 0.25rem;
   font-size: 0.75rem;
   opacity: 0.5;
+}
+
+/*
+ * On a phone the numbered row cannot fit one line, so it reads
+ * "Previous [5] Next": the page you are on stays, the jumps go.
+ */
+@container wt-cms-list (width < 30rem) {
+  .wt-cms-list__pagination-link--page:not(.wt-cms-list__pagination-link--active),
+  .wt-cms-list__pagination-gap {
+    display: none;
+  }
 }
 </style>

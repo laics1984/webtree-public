@@ -64,6 +64,42 @@ describe('buildCssVars hero typography (Apply to all heroes)', () => {
   })
 })
 
+describe('buildCssVars heading ink', () => {
+  const heading = (colors: Record<string, string>) =>
+    buildCssVars({ colors })['--builder-color-heading']
+
+  it('is the secondary colour wherever it reads on the background', () => {
+    expect(heading({ secondary: '#1d2b27', text: '#1c1917', background: '#ffffff' })).toBe('#1d2b27')
+  })
+
+  // A dark palette's secondary is its darkest band colour (Feruni: 1.04:1).
+  it('falls back to the text colour on a dark palette', () => {
+    expect(heading({ secondary: '#050403', text: '#fafaf9', background: '#0c0a09' })).toBe('#fafaf9')
+  })
+
+  it('keeps the secondary colour when it cannot be measured', () => {
+    expect(heading({ secondary: 'rgb(5, 4, 3)', text: '#fafaf9', background: '#0c0a09' })).toBe('rgb(5, 4, 3)')
+  })
+})
+
+describe('buildCssVars muted ink', () => {
+  const muted = (colors: Record<string, string>) => buildCssVars({ colors })['--wt-color-muted']
+
+  it('keeps the grey on a light palette, where it already reads', () => {
+    expect(muted({ background: '#ffffff' })).toBe('#6b7280')
+    expect(muted({ background: '#fbf8f3' })).toBe('#6b7280')
+  })
+
+  // #6b7280 is 4.09:1 on Feruni's page; #727988 is 4.52:1.
+  it('lifts the grey to AA on a dark palette', () => {
+    expect(muted({ background: '#0c0a09' })).toBe('#727988')
+  })
+
+  it('never overrides a muted colour the palette states', () => {
+    expect(muted({ background: '#0c0a09', muted: '#a8a29e' })).toBe('#a8a29e')
+  })
+})
+
 describe('hasOwnTextColor', () => {
   // The colour every builder element is created with reads as "Default".
   it('is false for the default text-colour token, with or without a fallback', () => {
