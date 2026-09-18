@@ -121,6 +121,7 @@ const DEFAULT_CSS_VARS = {
   '--wt-color-text': '#111827',
   '--wt-color-bg': '#ffffff',
   '--wt-color-muted': '#6b7280',
+  '--wt-color-surface-ink': '#111827',
   '--wt-font-body': 'Inter, Arial, sans-serif',
   '--wt-font-heading': 'Inter, Arial, sans-serif'
 }
@@ -246,6 +247,13 @@ export function buildCssVars(styles?: PublicStyleTokens | null) {
   // held to AA against it: unchanged on a light palette (4.8:1 on white),
   // lifted just enough on a dark one.
   const mutedColor = getNestedStyleValue(styles, ['colors', 'muted']) || directVars['--wt-color-muted'] || ensureContrast(DEFAULT_CSS_VARS['--wt-color-muted'], backgroundColor, 4.5)
+  // Ink for chrome that always paints its own near-white card regardless of
+  // page theme (the WhatsApp widget's greeting teaser, its roster panel).
+  // `text` is only guaranteed 7:1 against the page `background` — on a dark
+  // theme that same colour is light, and unreadable on the widget's fixed
+  // white surface. Re-derive against white so the widget stays legible no
+  // matter how dark the page theme is.
+  const surfaceInkColor = ensureContrast(textColor, '#ffffff', 4.5)
   const bodyFont = getNestedStyleValue(styles, ['fonts', 'body']) || getNestedStyleValue(styles, ['typography', 'bodyFont']) || directVars['--wt-font-body'] || DEFAULT_CSS_VARS['--wt-font-body']
   const headingFont = getNestedStyleValue(styles, ['fonts', 'heading']) || getNestedStyleValue(styles, ['typography', 'headingFont']) || directVars['--wt-font-heading'] || bodyFont
   const buttonBackground = getNestedStyleValue(styles, ['buttons', 'background']) || primaryColor
@@ -278,6 +286,7 @@ export function buildCssVars(styles?: PublicStyleTokens | null) {
     '--wt-color-text': textColor,
     '--wt-color-bg': backgroundColor,
     '--wt-color-muted': mutedColor,
+    '--wt-color-surface-ink': surfaceInkColor,
     '--wt-font-body': bodyFont,
     '--wt-font-heading': headingFont,
     '--builder-color-primary': primaryColor,
