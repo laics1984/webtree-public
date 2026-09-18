@@ -1,10 +1,11 @@
 // Google Analytics (GA4) for the owner's own property — see
 // webtree-cms-api/specs/public-site-api.md (`site.googleAnalytics`).
 //
-// Page views are left to gtag itself: its default config sends the landing
-// page_view, and GA4 Enhanced Measurement (on by default) sends one per SPA
-// history change. Sending our own as well would double-count every navigation,
-// so only the conversions GA cannot see on its own are forwarded.
+// GA4 Enhanced Measurement's history-based page_view detection is unreliable
+// for Nuxt's client-side routing (and depends on a per-property setting we
+// don't control), so the automatic config page_view is disabled and every
+// pageview — landing and SPA navigation alike — is sent explicitly from the
+// same tracker that already observes route changes for our own analytics.
 
 // Keep in lockstep with GoogleAnalyticsConfig::MEASUREMENT_ID_PATTERN. Checked
 // again here because the ID is interpolated into a script.
@@ -45,7 +46,8 @@ export function buildGtagScripts(measurementId: string) {
         // gtag sends nothing, same rule as the first-party tracker.
         'if(window.self===window.top){' +
         "gtag('js',new Date());" +
-        `gtag('config','${measurementId}');` +
+        // Pageviews are sent explicitly by the tracking plugin instead.
+        `gtag('config','${measurementId}',{send_page_view:false});` +
         '}'
     }
   ]
@@ -53,6 +55,11 @@ export function buildGtagScripts(measurementId: string) {
 
 function toSnakeCase(key: string): string {
   return key.replace(/[A-Z]/g, (char) => `_${char.toLowerCase()}`)
+}
+
+/** The gtag command for a pageview at `path` (config's automatic one is disabled). */
+export function toGtagPageviewEvent(path: string): GtagCommand {
+  return ['event', 'page_view', { page_path: path }]
 }
 
 /** The gtag command for a first-party event, or null when GA should not get it. */

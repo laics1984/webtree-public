@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildGtagScripts, isValidMeasurementId, toGtagEvent } from './googleAnalytics'
+import { buildGtagScripts, isValidMeasurementId, toGtagEvent, toGtagPageviewEvent } from './googleAnalytics'
 
 describe('isValidMeasurementId', () => {
   it('accepts GA4 measurement IDs', () => {
@@ -24,7 +24,7 @@ describe('buildGtagScripts', () => {
       async: true
     })
     expect(init.key).toBe('wt-ga-init')
-    expect(init.children).toContain("gtag('config','G-AB12CD34EF');")
+    expect(init.children).toContain("gtag('config','G-AB12CD34EF',{send_page_view:false});")
   })
 
   it('emits nothing for an ID that could break out of the script', () => {
@@ -46,8 +46,13 @@ describe('toGtagEvent', () => {
     expect(toGtagEvent('whatsapp_click')).toEqual(['event', 'whatsapp_click', {}])
   })
 
-  it('leaves page views and scroll depth to GA itself', () => {
-    expect(toGtagEvent('pageview')).toBeNull()
+  it('leaves scroll depth to GA itself', () => {
     expect(toGtagEvent('scroll_depth')).toBeNull()
+  })
+})
+
+describe('toGtagPageviewEvent', () => {
+  it('builds a page_view event with the page path', () => {
+    expect(toGtagPageviewEvent('/about')).toEqual(['event', 'page_view', { page_path: '/about' }])
   })
 })
