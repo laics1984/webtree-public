@@ -1,4 +1,4 @@
-import { toGtagEvent } from '~/lib/googleAnalytics'
+import { toGtagEvent, toGtagPageviewEvent } from '~/lib/googleAnalytics'
 import { normalizeHost } from '~/lib/host'
 
 // First-party tracking snippet — implements webtree-cms-api/docs/tracking-contract.md.
@@ -120,12 +120,18 @@ export default defineNuxtPlugin((nuxtApp) => {
   // the owner's GA property is fed — no second set of listeners.
   function forwardToGoogleAnalytics(event: TrackedEvent) {
     const gtag = (window as GtagWindow).gtag
-    const command = typeof gtag === 'function' ? toGtagEvent(event.t, event.m) : null
+    if (typeof gtag !== 'function') {
+      return
+    }
+    // config's automatic page_view is disabled, so pageviews are sent
+    // explicitly here — the same route-change detection already used for
+    // our own first-party analytics feeds GA too, once per navigation.
+    const command = event.t === 'pageview' ? toGtagPageviewEvent(event.p) : toGtagEvent(event.t, event.m)
     if (!command) {
       return
     }
     try {
-      gtag!(...command)
+      gtag(...command)
     } catch {}
   }
 
