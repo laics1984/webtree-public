@@ -434,7 +434,7 @@ watch(
   padding: 14px 34px 14px 16px;
   border-radius: 16px;
   background: var(--wt-color-surface, #ffffff);
-  color: var(--wt-color-text, #111827);
+  color: var(--wt-color-surface-ink, #111827);
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
@@ -495,7 +495,7 @@ watch(
   overflow-y: auto;
   border-radius: 18px;
   background: var(--wt-color-surface, #ffffff);
-  color: var(--wt-color-text, #111827);
+  color: var(--wt-color-surface-ink, #111827);
   box-shadow: 0 16px 44px rgba(15, 23, 42, 0.24);
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
