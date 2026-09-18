@@ -28,6 +28,7 @@ import {
   normalizeSchemaNodes,
 } from '~/lib/schema'
 import { buildCssVars } from '~/lib/styles'
+import { buildGtagScripts } from '~/lib/googleAnalytics'
 import type {
   PublicBlockNode,
   PublicEntityPayload,
@@ -485,7 +486,17 @@ const googleFontsHref = computed(() => {
   return `https://fonts.googleapis.com/css2?${params}&display=swap`
 })
 
+// The owner's GA only runs on their own domain — preview hosts would pollute
+// their reports (the init script also skips the builder iframe). Server-rendered
+// and async, so it costs no hydration work.
+const indexableHost = useHostIndexing()
+const gtagScripts = computed(() => {
+  const measurementId = props.site?.googleAnalytics?.measurementId
+  return indexableHost && measurementId ? buildGtagScripts(measurementId) : []
+})
+
 useHead(() => ({
+  script: gtagScripts.value,
   link: googleFontsHref.value
     ? [{ key: 'wt-google-fonts', rel: 'stylesheet', href: googleFontsHref.value }]
     : [],

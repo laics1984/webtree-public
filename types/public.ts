@@ -138,6 +138,9 @@ export interface SitePayload {
   // Null/absent unless the widget is on AND has a number: presence is the
   // renderer's whole guard.
   whatsapp?: WhatsAppWidget | null
+  // Same contract (webtree-cms-api GoogleAnalyticsPresenter): present only when
+  // the owner switched GA on with a valid GA4 measurement ID.
+  googleAnalytics?: { measurementId: string } | null
 }
 
 export interface SeoPayload {
