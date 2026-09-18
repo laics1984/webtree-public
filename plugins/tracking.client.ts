@@ -1,3 +1,4 @@
+import { toGtagEvent } from '~/lib/googleAnalytics'
 import { normalizeHost } from '~/lib/host'
 
 // First-party tracking snippet — implements webtree-cms-api/docs/tracking-contract.md.
@@ -18,6 +19,9 @@ interface TrackedEvent {
 }
 
 type WtTrack = (type: 'form_submit' | 'cta_click', meta?: Record<string, string>) => void
+
+// Defined by the gtag snippet PublicSiteShell injects when the owner enabled GA.
+type GtagWindow = Window & { gtag?: (...args: unknown[]) => void }
 
 const ENDPOINT = '/api/public/events'
 const SESSION_KEY = 'wt_sid'
@@ -112,7 +116,21 @@ export default defineNuxtPlugin((nuxtApp) => {
     }
   }
 
+  // Every detected event passes through enqueue, so this is the single place
+  // the owner's GA property is fed — no second set of listeners.
+  function forwardToGoogleAnalytics(event: TrackedEvent) {
+    const gtag = (window as GtagWindow).gtag
+    const command = typeof gtag === 'function' ? toGtagEvent(event.t, event.m) : null
+    if (!command) {
+      return
+    }
+    try {
+      gtag!(...command)
+    } catch {}
+  }
+
   function enqueue(event: TrackedEvent, immediate = false) {
+    forwardToGoogleAnalytics(event)
     if (queue.length >= MAX_QUEUE_SIZE) {
       return
     }
