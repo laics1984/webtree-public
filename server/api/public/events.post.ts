@@ -14,6 +14,15 @@ export default defineEventHandler(async (event) => {
   const clientIp = [forwardedFor, remoteAddress].filter(Boolean).join(', ')
   const userAgent = getRequestHeader(event, 'user-agent') || ''
 
+  // TEMP DIAGNOSTIC (remove after confirming the fix): every event has been
+  // landing at the CMS with an empty User-Agent since August. This traces
+  // whether this server ever saw one, to tell the read side from the forward.
+  if (!userAgent) {
+    console.log('events proxy saw empty User-Agent', {
+      allHeaders: getRequestHeaders(event)
+    })
+  }
+
   if (body) {
     try {
       await $fetch(`${config.publicApiBase}/api/public/events`, {
