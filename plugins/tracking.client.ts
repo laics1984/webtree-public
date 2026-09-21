@@ -1,3 +1,4 @@
+import { createEngagementClock } from '~/lib/engagementClock'
 import { toGtagEvent, toGtagPageviewEvent } from '~/lib/googleAnalytics'
 import { normalizeHost } from '~/lib/host'
 
@@ -6,7 +7,7 @@ import { normalizeHost } from '~/lib/host'
 // which forwards them to the CMS with the visitor's real IP/UA. Fire-and-forget:
 // nothing here may throw, retry, or log where a visitor could see it.
 
-type TrackedEventType = 'pageview' | 'cta_click' | 'form_submit' | 'whatsapp_click' | 'scroll_depth'
+type TrackedEventType = 'pageview' | 'cta_click' | 'form_submit' | 'whatsapp_click' | 'scroll_depth' | 'engagement'
 
 interface TrackedEvent {
   t: TrackedEventType
@@ -29,6 +30,8 @@ const FLUSH_INTERVAL_MS = 5000
 const MAX_BATCH_SIZE = 20
 const MAX_QUEUE_SIZE = 100
 const MAX_META_LENGTH = 80
+
+const ACTIVITY_EVENTS = ['pointerdown', 'pointermove', 'keydown'] as const
 
 const SID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
 const WHATSAPP_HREF_PATTERN = /^(?:https?:\/\/(?:www\.)?(?:wa\.me|api\.whatsapp\.com)\b|whatsapp:)/i
@@ -212,7 +215,30 @@ export default defineNuxtPlugin((nuxtApp) => {
     measureScrollDepth()
   }
 
-  window.addEventListener('scroll', measureScrollDepth, { passive: true })
+  // Engaged time: foreground seconds on the current page, emitted when the
+  // visit is left (route change) or put away (tab hidden, page unloading).
+  const engagementClock = createEngagementClock(document.visibilityState === 'visible')
+
+  function emitEngagement() {
+    const seconds = engagementClock.take()
+    if (seconds >= 1) {
+      enqueue({ t: 'engagement', p: currentPath, v: seconds, ts: Date.now() })
+    }
+  }
+
+  const markActivity = () => engagementClock.activity()
+  for (const type of ACTIVITY_EVENTS) {
+    window.addEventListener(type, markActivity, { passive: true })
+  }
+
+  window.addEventListener(
+    'scroll',
+    () => {
+      measureScrollDepth()
+      markActivity()
+    },
+    { passive: true }
+  )
   measureScrollDepth()
 
   // One delegated listener covers CTA clicks (data-wt-cta on the element or an
@@ -246,6 +272,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       return
     }
     emitScrollDepth()
+    emitEngagement()
     currentPath = nextPath
     resetScrollDepth()
     trackPageview(nextPath, false)
@@ -255,11 +282,16 @@ export default defineNuxtPlugin((nuxtApp) => {
 
   const finalFlush = () => {
     emitScrollDepth()
+    emitEngagement()
     flush()
   }
   window.addEventListener('pagehide', finalFlush)
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
+    const visible = document.visibilityState === 'visible'
+    // Stop (or restart) the clock first, so a hidden tab's flush carries
+    // exactly the time up to hiding.
+    engagementClock.setVisible(visible)
+    if (!visible) {
       finalFlush()
     }
   })

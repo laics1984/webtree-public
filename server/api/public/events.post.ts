@@ -1,3 +1,5 @@
+import { encodeVisitorGeo } from '~/lib/visitorGeo'
+
 // First-party tracking ingest proxy. The client posts batched events here
 // (same-origin, so navigator.sendBeacon stays preflight-free); we forward them
 // to the CMS with the visitor's real IP/UA so the server-side visitor hash,
@@ -12,6 +14,10 @@
 // travel as X-Wt-* instead; the CMS reads those in preference to the
 // standard headers.
 //
+// Location travels the same way (X-Wt-Geo): Cloudflare geolocates the
+// visitor's request to this Worker (event.context.cf), which the CMS on its
+// side of the hop cannot see.
+//
 // Always 204, whatever happens upstream — a broken tracker must never surface
 // to a visitor, and the endpoint must not become a host/validity oracle.
 export default defineEventHandler(async (event) => {
@@ -22,6 +28,7 @@ export default defineEventHandler(async (event) => {
   const remoteAddress = event.node.req.socket?.remoteAddress
   const clientIp = [forwardedFor, remoteAddress].filter(Boolean).join(', ')
   const userAgent = getRequestHeader(event, 'user-agent') || ''
+  const geo = encodeVisitorGeo(event.context.cf)
 
   if (body) {
     try {
@@ -31,7 +38,8 @@ export default defineEventHandler(async (event) => {
         headers: {
           'Content-Type': 'text/plain',
           ...(clientIp ? { 'X-Wt-Client-Ip': clientIp } : {}),
-          ...(userAgent ? { 'X-Wt-User-Agent': userAgent } : {})
+          ...(userAgent ? { 'X-Wt-User-Agent': userAgent } : {}),
+          ...(geo ? { 'X-Wt-Geo': geo } : {})
         }
       })
     } catch {
