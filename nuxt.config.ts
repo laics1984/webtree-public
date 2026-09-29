@@ -48,6 +48,9 @@ export default defineNuxtConfig({
         '/**': {
           cache: hostAwareRouteCache
         },
+        '/api/public/events': {
+          cache: false
+        },
         '/robots.txt': {
           cache: {
             maxAge: 3600,
