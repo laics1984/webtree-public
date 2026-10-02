@@ -10,9 +10,8 @@
  * Execution contract (SSR / SEO / accessibility):
  *  - SSR markup is never hidden. Initial "pending" states are applied by JS
  *    only, so crawlers and no-JS visitors always see the full content.
- *  - Elements already inside the viewport when the runtime starts are
- *    skipped entirely — above-the-fold content (including the LCP element)
- *    never animates on initial load.
+ *  - Configured entrances play once after hydration for visible elements;
+ *    offscreen elements wait until they enter the viewport.
  *  - `prefers-reduced-motion: reduce` turns the runtime into a no-op.
  *  - Unknown preset ids are ignored (forward compatibility: new presets can
  *    ship catalog-first without breaking older deployments).
@@ -162,18 +161,19 @@ export function collectMotionTargets(schemas: unknown[]): MotionTarget[] {
 const STYLE_ELEMENT_ID = 'wt-motion-runtime'
 
 const RUNTIME_CSS = `
-[data-wt-motion-state] { will-change: opacity, transform; }
 [data-wt-motion-state="pending"] {
-  opacity: 0;
-  transform: var(--wt-motion-from, none);
+  opacity: 0 !important;
+  transform: var(--wt-motion-from, none) !important;
+  transition: none !important;
 }
 [data-wt-motion-state="play"] {
-  opacity: 1;
-  transform: none;
+  will-change: opacity, transform;
+  opacity: var(--wt-motion-opacity, 1) !important;
+  transform: var(--wt-motion-to, none) !important;
   transition:
     opacity var(--wt-motion-duration, 0.65s) var(--wt-motion-easing, ${DEFAULT_EASING}),
-    transform var(--wt-motion-duration, 0.65s) var(--wt-motion-easing, ${DEFAULT_EASING});
-  transition-delay: var(--wt-motion-delay, 0s);
+    transform var(--wt-motion-duration, 0.65s) var(--wt-motion-easing, ${DEFAULT_EASING}) !important;
+  transition-delay: var(--wt-motion-delay, 0s) !important;
 }
 `
 
@@ -194,17 +194,18 @@ type RevealEntry = {
   el: HTMLElement
   delay: number
   duration: number
+  opacity: string
+  transform: string
+  fromTransform: string
 }
 
-function applyPendingState(entry: RevealEntry, preset: PresetDef, distance: number) {
+function applyPendingState(entry: RevealEntry, easing: string) {
   const { el, delay, duration } = entry
-  const transforms: string[] = []
-  if (preset.transformFrom && distance > 0) transforms.push(preset.transformFrom(distance))
-  if (preset.scaleFrom !== undefined) transforms.push(`scale(${preset.scaleFrom})`)
-
-  if (transforms.length > 0) el.style.setProperty('--wt-motion-from', transforms.join(' '))
+  el.style.setProperty('--wt-motion-from', entry.fromTransform)
+  el.style.setProperty('--wt-motion-to', entry.transform)
+  el.style.setProperty('--wt-motion-opacity', entry.opacity)
   el.style.setProperty('--wt-motion-duration', `${duration}s`)
-  el.style.setProperty('--wt-motion-easing', preset.easing)
+  el.style.setProperty('--wt-motion-easing', easing)
   if (delay > 0) el.style.setProperty('--wt-motion-delay', `${delay}s`)
   el.dataset.wtMotionState = 'pending'
 }
@@ -212,6 +213,8 @@ function applyPendingState(entry: RevealEntry, preset: PresetDef, distance: numb
 function clearMotionState(el: HTMLElement) {
   delete el.dataset.wtMotionState
   el.style.removeProperty('--wt-motion-from')
+  el.style.removeProperty('--wt-motion-to')
+  el.style.removeProperty('--wt-motion-opacity')
   el.style.removeProperty('--wt-motion-duration')
   el.style.removeProperty('--wt-motion-easing')
   el.style.removeProperty('--wt-motion-delay')
@@ -235,6 +238,7 @@ export function startMotionRuntime(options: MotionRuntimeOptions): () => void {
   if (intensity === 'off') return noop
 
   const timeouts = new Set<ReturnType<typeof setTimeout>>()
+  const frames = new Set<number>()
   const pendingElements = new Set<HTMLElement>()
   const parallaxTargets: Array<{ el: HTMLElement; motion: MotionAnnotation }> = []
   const webglTargets: Array<{ el: HTMLElement; motion: MotionAnnotation }> = []
@@ -244,7 +248,12 @@ export function startMotionRuntime(options: MotionRuntimeOptions): () => void {
 
   ensureRuntimeStylesheet()
 
-  const groups: Array<{ trigger: HTMLElement; entries: RevealEntry[] }> = []
+  const groups: Array<{
+    trigger: HTMLElement
+    entries: RevealEntry[]
+    visible: boolean
+    easing: string
+  }> = []
 
   for (const target of options.targets) {
     const el = document.querySelector<HTMLElement>(
@@ -267,9 +276,6 @@ export function startMotionRuntime(options: MotionRuntimeOptions): () => void {
       continue
     }
 
-    // Above-the-fold content never animates on load: no flash, no LCP impact.
-    if (isInViewport(el)) continue
-
     const elementIntensity = target.motion.intensity ?? intensity
     if (elementIntensity === 'off') continue
     const factors = INTENSITY_FACTORS[elementIntensity]
@@ -283,55 +289,95 @@ export function startMotionRuntime(options: MotionRuntimeOptions): () => void {
         ? (Array.from(el.children).filter((c) => c instanceof HTMLElement) as HTMLElement[])
         : null
 
-    const entries: RevealEntry[] = (children ?? [el]).map((element, index) => ({
-      el: element,
-      delay: baseDelay + (children && stagger ? index * stagger : 0),
-      duration,
-    }))
+    const transforms: string[] = []
+    if (preset.transformFrom && distance > 0) transforms.push(preset.transformFrom(distance))
+    if (preset.scaleFrom !== undefined) transforms.push(`scale(${preset.scaleFrom})`)
+    const entries: RevealEntry[] = (children ?? [el]).map((element, index) => {
+      const computed = getComputedStyle(element)
+      const transform = computed.transform || 'none'
+      return {
+        el: element,
+        delay: baseDelay + (children && stagger ? index * stagger : 0),
+        duration,
+        opacity: computed.opacity || '1',
+        transform,
+        fromTransform:
+          [...transforms, ...(transform === 'none' ? [] : [transform])].join(' ') || 'none',
+      }
+    })
+    groups.push({ trigger: el, entries, visible: isInViewport(el), easing: preset.easing })
+  }
 
-    for (const entry of entries) {
-      applyPendingState(entry, preset, distance)
+  // Read geometry and authored styles before any pending-state writes. This
+  // also keeps nested entrances from measuring an already-transformed parent.
+  for (const group of groups) {
+    for (const entry of group.entries) {
+      applyPendingState(entry, group.easing)
       pendingElements.add(entry.el)
     }
-    groups.push({ trigger: el, entries })
   }
 
   let observer: IntersectionObserver | null = null
 
+  const scheduleFrame = (callback: () => void) => {
+    if (stopped) return
+    const id = requestAnimationFrame(() => {
+      frames.delete(id)
+      if (!stopped) callback()
+    })
+    frames.add(id)
+  }
+
   const reveal = (entries: RevealEntry[]) => {
-    requestAnimationFrame(() => {
-      for (const entry of entries) {
-        entry.el.dataset.wtMotionState = 'play'
-        const settle = setTimeout(
-          () => {
-            clearMotionState(entry.el)
-            pendingElements.delete(entry.el)
-          },
-          (entry.delay + entry.duration) * 1000 + 200
-        )
-        timeouts.add(settle)
-      }
+    // Two frames guarantee a painted start state even on initial load, with
+    // no synchronous layout flush. Cancel both when the page is disposed.
+    scheduleFrame(() => {
+      scheduleFrame(() => {
+        for (const entry of entries) {
+          entry.el.dataset.wtMotionState = 'play'
+          const settle = setTimeout(
+            () => {
+              clearMotionState(entry.el)
+              pendingElements.delete(entry.el)
+              timeouts.delete(settle)
+            },
+            (entry.delay + entry.duration) * 1000 + 200
+          )
+          timeouts.add(settle)
+        }
+      })
     })
   }
 
   if (groups.length > 0) {
     if (typeof IntersectionObserver === 'undefined') {
-      for (const group of groups) reveal(group.entries)
+      reveal(groups.flatMap((group) => group.entries))
     } else {
-      const groupByTrigger = new Map(groups.map((g) => [g.trigger, g] as const))
-      observer = new IntersectionObserver(
-        (observed) => {
-          for (const entry of observed) {
-            if (!entry.isIntersecting) continue
-            const group = groupByTrigger.get(entry.target as HTMLElement)
-            if (!group) continue
-            observer?.unobserve(entry.target)
-            reveal(group.entries)
-          }
-        },
-        { rootMargin: '0px 0px -10% 0px', threshold: 0.1 }
+      const visibleEntries = groups
+        .filter((group) => group.visible)
+        .flatMap((group) => group.entries)
+      if (visibleEntries.length > 0) reveal(visibleEntries)
+      const groupByTrigger = new Map(
+        groups.filter((group) => !group.visible).map((group) => [group.trigger, group] as const)
       )
-      for (const group of groups) observer.observe(group.trigger)
+      if (groupByTrigger.size > 0) {
+        observer = new IntersectionObserver(
+          (observed) => {
+            const entries: RevealEntry[] = []
+            for (const entry of observed) {
+              if (!entry.isIntersecting) continue
+              const group = groupByTrigger.get(entry.target as HTMLElement)
+              if (!group) continue
+              groupByTrigger.delete(entry.target as HTMLElement)
+              observer?.unobserve(entry.target)
+              entries.push(...group.entries)
+            }
+            if (entries.length > 0) reveal(entries)
+          },
+          { rootMargin: '0px 0px -10% 0px', threshold: 0.1 }
+        )
+        for (const trigger of groupByTrigger.keys()) observer.observe(trigger)
+      }
     }
   }
 
@@ -352,6 +398,8 @@ export function startMotionRuntime(options: MotionRuntimeOptions): () => void {
   return () => {
     stopped = true
     observer?.disconnect()
+    for (const frame of frames) cancelAnimationFrame(frame)
+    frames.clear()
     for (const timeout of timeouts) clearTimeout(timeout)
     for (const el of pendingElements) clearMotionState(el)
     pendingElements.clear()

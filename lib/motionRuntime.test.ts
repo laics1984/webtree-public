@@ -3,6 +3,7 @@ import {
   collectMotionTargets,
   getNodeMotion,
   resolveSiteMotionIntensity,
+  startMotionRuntime,
 } from './motionRuntime'
 
 const node = (overrides: Record<string, unknown>) => ({
@@ -11,6 +12,10 @@ const node = (overrides: Record<string, unknown>) => ({
   styles: {},
   content: [],
   ...overrides,
+})
+
+it('does nothing during server rendering', () => {
+  expect(() => startMotionRuntime({ targets: [{ nodeId: 'hero', motion: { preset: 'rise' } }] })()).not.toThrow()
 })
 
 describe('getNodeMotion', () => {
