@@ -42,6 +42,14 @@ const props = defineProps<{
   bodySchema?: PublicSchemaTree | PublicBlockNode[] | null
 }>()
 
+// Tracking bindings are published runtime data, shared with the single tracker.
+onMounted(() => {
+  useNuxtApp().$wtConfigureProducts?.(props.site?.productTracking ?? [])
+})
+watch(() => props.site?.productTracking, bindings => {
+  if (import.meta.client) useNuxtApp().$wtConfigureProducts?.(bindings ?? [])
+}, { deep: true })
+
 const BACKGROUND_STYLE_KEYS = [
   'background',
   'backgroundColor',

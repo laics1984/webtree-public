@@ -128,6 +128,7 @@ export interface WhatsAppWidget {
 }
 
 export interface SitePayload {
+  productTracking?: import('~/lib/productTracking').ProductBinding[]
   layoutId?: string | number | null
   layoutVersionId?: string | number | null
   builderStyles?: PublicStyleTokens | null
@@ -141,6 +142,7 @@ export interface SitePayload {
   // Same contract (webtree-cms-api GoogleAnalyticsPresenter): present only when
   // the owner switched GA on with a valid GA4 measurement ID.
   googleAnalytics?: { measurementId: string } | null
+  googleSiteVerification?: string[]
 }
 
 export interface SeoPayload {

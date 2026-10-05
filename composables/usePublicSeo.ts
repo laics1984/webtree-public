@@ -132,6 +132,14 @@ export function usePublicSeo(payload: Ref<PublicPageResponse | null | undefined>
       meta.push({ name: 'keywords', content: keywords })
     }
 
+    // Google verification is public, SSR metadata. Distinct keys preserve the
+    // tokens of multiple owners instead of deduplicating them by meta name.
+    for (const token of site?.googleSiteVerification || []) {
+      if (/^[A-Za-z0-9_-]{1,256}$/.test(token)) {
+        meta.push({ key: `google-site-verification:${token}`, name: 'google-site-verification', content: token })
+      }
+    }
+
     meta.push({ name: 'robots', content: robots })
     meta.push({ property: 'og:title', content: seo?.ogTitle || title })
     meta.push({ property: 'og:description', content: seo?.ogDescription || description })

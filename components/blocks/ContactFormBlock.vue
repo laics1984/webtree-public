@@ -123,6 +123,7 @@ const PAYLOAD_KEY_MAP: Record<string, keyof PublicContactPayload> = {
 
 const formValues = reactive<Record<string, string>>({})
 const honeypot = ref('')
+const formElement = ref<HTMLFormElement | null>(null)
 const status = ref<'idle' | 'submitting' | 'success' | 'error'>('idle')
 const errorMessage = ref('')
 
@@ -150,6 +151,7 @@ async function onSubmit() {
   payload.website = honeypot.value
   if (import.meta.client) {
     payload.page_url = window.location.href
+    payload.analytics = useNuxtApp().$wtProductContext?.(formElement.value)
   }
 
   status.value = 'submitting'
@@ -195,7 +197,7 @@ async function onSubmit() {
         <p class="wt-contact-form__success-body">{{ successBody }}</p>
       </div>
 
-      <form v-else class="wt-contact-form__panel" novalidate @submit.prevent="onSubmit">
+      <form v-else ref="formElement" class="wt-contact-form__panel" novalidate @submit.prevent="onSubmit">
         <!-- Honeypot: hidden from humans, bots fill it and get rejected. -->
         <input
           v-model="honeypot"

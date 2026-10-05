@@ -75,6 +75,7 @@ export async function fetchPublicContentItem(
 }
 
 export interface PublicContactPayload {
+  analytics?: { session_id?: string; product_id?: string; product_path?: string }
   first_name?: string
   last_name?: string
   email: string
