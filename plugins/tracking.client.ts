@@ -1,13 +1,14 @@
 import { createEngagementClock } from '~/lib/engagementClock'
 import { toGtagEvent, toGtagPageviewEvent } from '~/lib/googleAnalytics'
 import { normalizeHost } from '~/lib/host'
+import { detailProduct, recentProduct, type ProductBinding, type ProductInterest } from '~/lib/productTracking'
 
 // First-party tracking snippet — implements webtree-cms-api/docs/tracking-contract.md.
 // Events batch in memory and post to the same-origin Nitro proxy (/api/public/events),
 // which forwards them to the CMS with the visitor's real IP/UA. Fire-and-forget:
 // nothing here may throw, retry, or log where a visitor could see it.
 
-type TrackedEventType = 'pageview' | 'cta_click' | 'form_submit' | 'whatsapp_click' | 'scroll_depth' | 'engagement'
+type TrackedEventType = 'pageview' | 'cta_click' | 'form_submit' | 'whatsapp_click' | 'scroll_depth' | 'engagement' | 'product_view'
 
 interface TrackedEvent {
   t: TrackedEventType
@@ -59,20 +60,22 @@ function clampMeta(value: string): string {
 
 function normalizePath(path: string): string {
   const bare = (path || '/').split(/[?#]/)[0] || '/'
-  return bare.startsWith('/') ? bare : `/${bare}`
+  const normalized = (bare.startsWith('/') ? bare : `/${bare}`).toLowerCase().replace(/\/$/, '')
+  return normalized || '/'
 }
 
 export default defineNuxtPlugin((nuxtApp) => {
   const noop: WtTrack = () => {}
+  const disabled = { provide: { wtTrack: noop, wtConfigureProducts: (_bindings: ProductBinding[]) => {}, wtProductContext: (_element?: Element | null) => ({}) } }
 
   // Builder preview renders the site inside an iframe — never track it.
   if (window.self !== window.top) {
-    return { provide: { wtTrack: noop } }
+    return disabled
   }
 
   const host = normalizeHost(window.location.host)
   if (!host) {
-    return { provide: { wtTrack: noop } }
+    return disabled
   }
 
   // sessionStorage may be unavailable (privacy modes); fall back to a
@@ -95,6 +98,78 @@ export default defineNuxtPlugin((nuxtApp) => {
 
   let currentPath = normalizePath(window.location.pathname)
   const queue: TrackedEvent[] = []
+  let productBindings: ProductBinding[] = []
+  let interest: ProductInterest | null = null
+  const INTEREST_KEY = 'wt_product_interest'
+  try { interest = JSON.parse(window.sessionStorage.getItem(INTEREST_KEY) || 'null') } catch {}
+  function rememberProduct(productId?: string, path = currentPath) {
+    if (!productId) return
+    interest = { productId, at: Date.now(), path: normalizePath(path) }
+    try { window.sessionStorage.setItem(INTEREST_KEY, JSON.stringify(interest)) } catch {}
+  }
+  function productAt(element?: Element | null): string | undefined {
+    const candidates = productBindings.filter(b => b.path === currentPath.toLowerCase() && b.nodeId !== '')
+    for (let node = element; node; node = node.parentElement) {
+      const id = node.getAttribute('data-wt-node-id')
+      const match = candidates.find(b => b.nodeId === id)
+      if (match) return match.productId
+    }
+    return detailProduct(productBindings, currentPath)
+  }
+  function productContext(element?: Element | null) {
+    const explicit = productAt(element)
+    const productId = explicit || recentProduct(interest, Date.now())
+    const path = explicit ? currentPath.toLowerCase().replace(/\/$/, '') || '/' : typeof interest?.path === 'string' ? normalizePath(interest.path) : undefined
+    return { session_id: sid, ...(productId ? { product_id: productId, ...(path ? { product_path: path } : {}) } : {}) }
+  }
+
+  let exposureObserver: IntersectionObserver | null = null
+  let mutationObserver: MutationObserver | null = null
+  let exposurePath = ''
+  let scanFrame = 0
+  const exposed = new Set<string>()
+  let observed = new WeakSet<Element>()
+  function configureProducts(bindings: ProductBinding[]) {
+    productBindings = bindings
+    if (exposurePath !== currentPath) {
+      exposed.clear()
+      exposureObserver?.disconnect()
+      observed = new WeakSet<Element>()
+      exposurePath = currentPath
+    }
+    if (!exposureObserver && typeof IntersectionObserver !== 'undefined') {
+      exposureObserver = new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting || entry.intersectionRatio < 0.1 || document.visibilityState !== 'visible') continue
+          const nodeId = entry.target.getAttribute('data-wt-node-id')
+          const binding = productBindings.find(b => b.path === currentPath.toLowerCase() && b.nodeId === nodeId && b.nodeId !== '')
+          if (!binding || exposed.has(binding.productId)) continue
+          exposed.add(binding.productId)
+          rememberProduct(binding.productId)
+          enqueue({ t: 'product_view', p: currentPath, m: { productId: binding.productId, nodeId: binding.nodeId }, ts: Date.now() })
+        }
+      }, { threshold: 0.1 })
+    }
+    const scan = () => {
+      if (scanFrame) return
+      scanFrame = window.requestAnimationFrame(() => {
+        scanFrame = 0
+        const ids = new Set(productBindings.filter(b => b.path === currentPath.toLowerCase() && b.nodeId !== '').map(b => b.nodeId))
+        if (!ids.size) return
+        for (const element of document.querySelectorAll('[data-wt-node-id]')) {
+          if (ids.has(element.getAttribute('data-wt-node-id') || '') && !observed.has(element)) {
+            observed.add(element)
+            exposureObserver?.observe(element)
+          }
+        }
+      })
+    }
+    if (!mutationObserver && productBindings.some(b => b.nodeId !== '')) {
+      mutationObserver = new MutationObserver(scan)
+      mutationObserver.observe(document.body, { childList: true, subtree: true })
+    }
+    scan()
+  }
 
   function send(events: TrackedEvent[]) {
     const body = JSON.stringify({ host, sid, events })
@@ -129,6 +204,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     // config's automatic page_view is disabled, so pageviews are sent
     // explicitly here — the same route-change detection already used for
     // our own first-party analytics feeds GA too, once per navigation.
+    if (event.t === 'product_view') return
     const command = event.t === 'pageview' ? toGtagPageviewEvent(event.p) : toGtagEvent(event.t, event.m)
     if (!command) {
       return
@@ -169,7 +245,9 @@ export default defineNuxtPlugin((nuxtApp) => {
   }
 
   function trackPageview(path: string, landing: boolean) {
-    const event: TrackedEvent = { t: 'pageview', p: path, ts: Date.now() }
+    const productId = detailProduct(productBindings, path)
+    rememberProduct(productId)
+    const event: TrackedEvent = { t: 'pageview', p: path, ...(productId ? { m: { productId } } : {}), ts: Date.now() }
     // Referrer on the first pageview of a session, or whenever it is external.
     const referrer = isNewSession && landing ? document.referrer : externalReferrer()
     if (landing && referrer) {
@@ -222,7 +300,8 @@ export default defineNuxtPlugin((nuxtApp) => {
   function emitEngagement() {
     const seconds = engagementClock.take()
     if (seconds >= 1) {
-      enqueue({ t: 'engagement', p: currentPath, v: seconds, ts: Date.now() })
+      const productId = detailProduct(productBindings, currentPath)
+      enqueue({ t: 'engagement', p: currentPath, v: seconds, ...(productId ? { m: { productId } } : {}), ts: Date.now() })
     }
   }
 
@@ -258,7 +337,10 @@ export default defineNuxtPlugin((nuxtApp) => {
 
       const href = target.closest('a[href]')?.getAttribute('href') || ''
       if (WHATSAPP_HREF_PATTERN.test(href)) {
-        enqueue({ t: 'whatsapp_click', p: currentPath, ts: Date.now() })
+        const context = productContext(target)
+        const meta = context.product_id ? { productId: context.product_id } : undefined
+        rememberProduct(context.product_id, context.product_path)
+        enqueue({ t: 'whatsapp_click', p: currentPath, m: meta, ts: Date.now() }, true)
       }
     },
     true
@@ -276,6 +358,7 @@ export default defineNuxtPlugin((nuxtApp) => {
     currentPath = nextPath
     resetScrollDepth()
     trackPageview(nextPath, false)
+    configureProducts(productBindings)
   })
 
   window.setInterval(flush, FLUSH_INTERVAL_MS)
@@ -291,12 +374,18 @@ export default defineNuxtPlugin((nuxtApp) => {
     // Stop (or restart) the clock first, so a hidden tab's flush carries
     // exactly the time up to hiding.
     engagementClock.setVisible(visible)
+    if (visible) {
+      exposureObserver?.disconnect()
+      observed = new WeakSet<Element>()
+      configureProducts(productBindings)
+    }
     if (!visible) {
       finalFlush()
     }
   })
 
-  trackPageview(currentPath, true)
+  // Shell config is installed by mounted components before app:mounted.
+  nuxtApp.hook('app:mounted', () => trackPageview(currentPath, true))
 
   const wtTrack: WtTrack = (type, meta) => {
     const event: TrackedEvent = { t: type, p: currentPath, ts: Date.now() }
@@ -311,5 +400,5 @@ export default defineNuxtPlugin((nuxtApp) => {
     enqueue(event, true)
   }
 
-  return { provide: { wtTrack } }
+  return { provide: { wtTrack, wtConfigureProducts: configureProducts, wtProductContext: productContext } }
 })
