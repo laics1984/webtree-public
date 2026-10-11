@@ -433,8 +433,9 @@ watch(
   max-width: min(272px, calc(100vw - 48px));
   padding: 14px 34px 14px 16px;
   border-radius: 16px;
-  background: var(--wt-color-surface, #ffffff);
-  color: var(--wt-color-surface-ink, #111827);
+  /* Use the same site tokens as the builder's canvas and settings preview. */
+  background: var(--builder-color-surface, #ffffff);
+  color: var(--builder-color-text, #111827);
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
   border: 1px solid rgba(15, 23, 42, 0.08);
 }
@@ -443,6 +444,7 @@ watch(
   margin: 0 0 2px;
   font-size: 14px;
   font-weight: 700;
+  line-height: 1.5;
 }
 
 .wt-wa__greeting-message {

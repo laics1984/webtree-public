@@ -32,11 +32,11 @@ describe('isPlatformRequestHost', () => {
   })
 
   it('rejects a port mismatch against a ported base domain', () => {
-    expect(isPlatformRequestHost('acme.public.localhost:4000', DEV_BASE)).toBe(false)
+    expect(isPlatformRequestHost('acme.localhost:4000', DEV_BASE)).toBe(false)
   })
 
   it('ignores the port when the request carries none', () => {
-    expect(isPlatformRequestHost('acme.public.localhost', DEV_BASE)).toBe(true)
+    expect(isPlatformRequestHost('acme.localhost', DEV_BASE)).toBe(true)
   })
 
   it('is case and decorator insensitive', () => {

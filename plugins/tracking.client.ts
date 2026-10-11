@@ -1,6 +1,7 @@
 import { createEngagementClock } from '~/lib/engagementClock'
 import { toGtagEvent, toGtagPageviewEvent } from '~/lib/googleAnalytics'
 import { normalizeHost } from '~/lib/host'
+import { isInternalVisit } from '~/lib/internalVisit'
 import { detailProduct, recentProduct, type ProductBinding, type ProductInterest } from '~/lib/productTracking'
 
 // First-party tracking snippet — implements webtree-cms-api/docs/tracking-contract.md.
@@ -70,6 +71,14 @@ export default defineNuxtPlugin((nuxtApp) => {
 
   // Builder preview renders the site inside an iframe — never track it.
   if (window.self !== window.top) {
+    return disabled
+  }
+
+  // Fowable staff previewing a demo from the console (?wt_internal=1): their
+  // visits must not count as the lead's.
+  let localFlags: Storage | null = null
+  try { localFlags = window.localStorage } catch {}
+  if (isInternalVisit(window.location.search, localFlags)) {
     return disabled
   }
 

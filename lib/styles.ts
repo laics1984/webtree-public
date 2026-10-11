@@ -248,7 +248,7 @@ export function buildCssVars(styles?: PublicStyleTokens | null) {
   // lifted just enough on a dark one.
   const mutedColor = getNestedStyleValue(styles, ['colors', 'muted']) || directVars['--wt-color-muted'] || ensureContrast(DEFAULT_CSS_VARS['--wt-color-muted'], backgroundColor, 4.5)
   // Ink for chrome that always paints its own near-white card regardless of
-  // page theme (the WhatsApp widget's greeting teaser, its roster panel).
+  // page theme (the WhatsApp widget's roster panel).
   // `text` is only guaranteed 7:1 against the page `background` — on a dark
   // theme that same colour is light, and unreadable on the widget's fixed
   // white surface. Re-derive against white so the widget stays legible no
