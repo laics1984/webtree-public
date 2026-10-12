@@ -10,6 +10,7 @@ import {
   resolvePageBackgroundHex,
   resolvePaletteHex,
   resolveSectionBackgroundImage,
+  resolveSolidFillHex,
   resolveThemeTexture,
   sampleMeshEdgeStops,
 } from './backgroundTexture'
@@ -163,6 +164,84 @@ describe('resolveColorToHex', () => {
     expect(resolveColorToHex(null, palette, pageBackgroundHex)).toBe('#ffffff')
     expect(resolveColorToHex('not-a-color', palette, pageBackgroundHex)).toBe('#ffffff')
   })
+})
+
+// The texture gate decides "plain" against this, so anything that is not one
+// opaque colour must come back null. resolveColorToHex's white fallback read a
+// `transparent` testimonial card as a page-white band and painted the theme's
+// grain across its whole box: a grey card the design never drew.
+describe('resolveSolidFillHex', () => {
+  const palette = resolvePaletteHex({ colors: { primary: '#112233', surface: '#445566' } })
+  const pageBackgroundHex = '#aabbcc'
+  const solid = (value: string | null) => resolveSolidFillHex(value, palette, pageBackgroundHex)
+
+  it('resolves tokens and opaque literals exactly as resolveColorToHex does', () => {
+    for (const value of [
+      'var(--builder-color-surface)',
+      'var(--builder-page-background, #ffffff)',
+      '#FFF',
+      'rgb(255, 255, 255)',
+      'rgba(255, 255, 255, 1)',
+      'rgba(255, 255, 255, 100%)',
+    ]) {
+      expect(solid(value)).toBe(resolveColorToHex(value, palette, pageBackgroundHex))
+    }
+  })
+
+  it('names no colour for a fill that is not one opaque colour', () => {
+    for (const value of [
+      null,
+      '',
+      'transparent',
+      'rgba(255, 255, 255, 0.62)',
+      'rgba(255,255,255,.06)',
+      'rgba(255, 255, 255, 50%)',
+      'rgba(0, 0, 0, 0)',
+      'color-mix(in srgb, var(--builder-color-background) 80%, transparent)',
+      'color-mix(in srgb, #ffffff 90%, var(--builder-color-primary))',
+      'not-a-color',
+    ]) {
+      expect(solid(value)).toBeNull()
+    }
+  })
+
+  it('keeps a see-through card off the theme texture', () => {
+    const ctx = {
+      primaryHex: '#2563eb',
+      themeTexture: 'grain' as const,
+      plainBackgroundHexes: ['#ffffff', '#f8fafc'],
+    }
+    for (const fill of ['transparent', 'rgba(255, 255, 255, 0.62)']) {
+      expect(
+        resolveSectionBackgroundImage(
+          { backgroundColorHex: resolveSolidFillHex(fill, palette, '#ffffff') },
+          ctx
+        )
+      ).toBeUndefined()
+    }
+    // An explicit choice still wins over the fill, as it always did.
+    expect(
+      resolveSectionBackgroundImage(
+        { backgroundTexture: 'grain', backgroundColorHex: resolveSolidFillHex('transparent', palette, '#ffffff') },
+        ctx
+      )
+    ).toMatch(/^url\("data:image\/svg\+xml;base64,/)
+  })
+})
+
+// Same source-level pin as SectionDivider.vue above: a lib test still passes
+// if a block goes back to reading its fill through resolveColorToHex.
+describe('texture-eligible blocks read their fill through resolveSolidFillHex', () => {
+  for (const block of ['SectionBlock.vue', 'ContainerBlock.vue']) {
+    it(block, () => {
+      const source = readFileSync(
+        fileURLToPath(new URL(`../components/blocks/${block}`, import.meta.url)),
+        'utf-8'
+      )
+      expect(source).toContain('resolveSolidFillHex(bgColorValue, palette, pageBackgroundHex)')
+      expect(source).not.toContain('resolveColorToHex(bgColorValue')
+    })
+  }
 })
 
 describe('sampleMeshEdgeStops', () => {
