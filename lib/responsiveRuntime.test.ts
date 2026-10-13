@@ -29,13 +29,33 @@ const imageLogo = (height = '52px') => ({
   content: { src: 'https://example.com/logo.png', alt: 'Acme' },
 })
 
-// The typographic fallback: a container named "Brand" whose wordmark is a LINK.
+// The monogram circle: a fixed 48px box holding the brand's initial.
+const monogram = () => ({
+  id: 'mark',
+  name: 'Mark',
+  type: 'container',
+  styles: {
+    display: 'flex',
+    width: '48px',
+    height: '48px',
+    borderRadius: '9999px',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: [
+    { id: 'initial', name: 'Monogram', type: 'text', styles: { fontSize: '24px' }, content: { innerText: 'A' } },
+  ],
+})
+
+// The typographic fallback, as header_footer._logo_mark builds it: a flex row
+// named "Brand" holding the monogram circle and a wordmark that is a LINK.
 const wordmarkLogo = () => ({
   id: 'brand',
   name: 'Brand',
   type: 'container',
-  styles: { flexDirection: 'row', alignItems: 'center' },
+  styles: { display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '10px', width: 'auto' },
   content: [
+    monogram(),
     {
       id: 'wordmark',
       name: 'Wordmark',
@@ -65,6 +85,15 @@ const menu = () => ({
 const nodeStyles = (node: unknown, device: 'Mobile' | 'Tablet') =>
   getResponsiveNodeStyles(node, device, undefined, { scope: 'header' })
 
+// One node's rule inside one device's media block ('' when it has none).
+const deviceRule = (css: string, device: 'Mobile' | 'Tablet', nodeId: string) => {
+  const block =
+    device === 'Mobile'
+      ? css.split('@media (max-width: 767.98px)')[1] ?? ''
+      : css.split('@media (min-width: 768px)')[1]?.split('@media')[0] ?? ''
+  return block.split('\n').find((line) => line.includes(`data-wt-node-id="${nodeId}"`)) ?? ''
+}
+
 describe('header chrome below the desktop breakpoint', () => {
   // Mobile and tablet are exactly the range where MenuBlock swaps the nav for
   // the Menu button (`max-width: 1023.98px` = the two device queries this
@@ -83,6 +112,25 @@ describe('header chrome below the desktop breakpoint', () => {
       const css = buildResponsiveStylesheet({ headerSchema: [headerBar([wordmarkLogo(), menu(), cta()])] })
       const rule = css.split('\n').find((line) => line.includes('data-wt-node-id="wordmark"'))
       expect(rule ?? '').not.toContain('display: none')
+    })
+
+    it(`keeps the typographic mark one lockup on ${device}`, () => {
+      // A circle beside a name. The fluid-box rules are for layout boxes: on the
+      // mark they stretched the 48px circle to `width: 100%` — a pill — and the
+      // flex-wrap rule then put the name on a row of its own under it.
+      const css = buildResponsiveStylesheet({ headerSchema: [headerBar([wordmarkLogo(), menu()])] })
+      expect(deviceRule(css, device, 'mark')).not.toContain('width: 100%')
+      expect(deviceRule(css, device, 'brand')).not.toContain('flex-wrap')
+      // …while the rules still reach inside the mark: its letter scales with the
+      // rest of the type on a phone.
+      if (device === 'Mobile') expect(deviceRule(css, device, 'initial')).toContain('font-size: 21px')
+    })
+
+    it(`still makes a fixed-width box outside the mark fluid on ${device}`, () => {
+      // The exemption is the mark's, not the shape's: the same box anywhere
+      // else in the header is a layout box and goes fluid as it always did.
+      const css = buildResponsiveStylesheet({ headerSchema: [headerBar([monogram(), menu()])] })
+      expect(deviceRule(css, device, 'mark')).toContain('width: 100%')
     })
 
     it(`shrinks the brand logo on ${device}`, () => {
@@ -183,5 +231,67 @@ describe('header chrome below the desktop breakpoint', () => {
   it('does not touch links outside the header', () => {
     const styles = getResponsiveNodeStyles(cta(), 'Mobile', undefined, { scope: 'body' })
     expect(styles.display).toBe('inline-flex')
+  })
+})
+
+// The bottom bar every chrome-footer-* catalog entry ends with: copyright, the
+// social icons and the legal links in one wrapping row.
+const footerBar = (children: unknown[]) => ({
+  id: 'footer',
+  name: 'Site Footer',
+  type: '__footer',
+  styles: { width: '100%' },
+  content: [
+    {
+      id: 'bottom',
+      name: 'Footer bottom bar',
+      type: 'container',
+      styles: { display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '16px' },
+      content: children,
+    },
+  ],
+})
+
+const footerMenu = (id: string, content: Record<string, string>) => ({
+  id,
+  name: 'Menu',
+  type: 'menu',
+  styles: { width: 'auto', fontSize: '12px' },
+  content,
+})
+
+describe('footer menus on a phone', () => {
+  it('stacks the legal links into a column', () => {
+    const css = buildResponsiveStylesheet({
+      footerSchema: [footerBar([footerMenu('legal', { slot: 'legal', variant: 'footer-legal' })])],
+    })
+    expect(deviceRule(css, 'Mobile', 'legal')).toContain('flex-direction: column')
+  })
+
+  it('keeps the social icons in a row', () => {
+    // MenuBlock renders a social menu as a wrapping row of round glyph
+    // buttons. Stacked, four icons became a 172px column pinned to the left
+    // edge — flush left even in the centred footer.
+    const css = buildResponsiveStylesheet({
+      footerSchema: [
+        footerBar([
+          footerMenu('social', { slot: 'social', variant: 'social-inline' }),
+          footerMenu('legal', { slot: 'legal', variant: 'footer-legal' }),
+        ]),
+      ],
+    })
+    const rule = deviceRule(css, 'Mobile', 'social')
+    expect(rule).not.toContain('flex-direction')
+    expect(rule).not.toContain('align-items')
+    expect(rule).not.toContain('width: 100%')
+  })
+
+  it('recognises a social menu by its variant alone', () => {
+    const styles = getResponsiveNodeStyles(
+      footerMenu('social', { variant: 'social-inline' }),
+      'Mobile', undefined, { scope: 'footer', parentType: 'footer' }
+    )
+    expect(styles.flexDirection).toBeUndefined()
+    expect(styles.width).toBe('auto')
   })
 })

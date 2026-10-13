@@ -966,9 +966,12 @@ function cardMeta(item: PublicContentItem) {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   border: 1px solid color-mix(in srgb, var(--wt-color-primary, #2563eb) 24%, transparent);
-  background: color-mix(in srgb, var(--wt-color-primary, #2563eb) 8%, transparent);
-  /* Small text in the brand hue takes the AA-corrected primary (lib/styles.ts). */
-  color: var(--builder-color-primary-ink, var(--wt-color-primary, #2563eb));
+  /* A chip paints its own surface, so it states its own ink: the opaque brand
+     tint of the card's background, and the brand ink held to AA on that tint
+     (lib/styles.ts primaryTint). primary-ink is AA only on the bare background;
+     on a translucent tint it measured 4.1:1. */
+  background: var(--builder-color-primary-tint, var(--wt-color-bg, #ffffff));
+  color: var(--builder-color-primary-tint-ink, var(--builder-color-primary-ink, var(--wt-color-primary, #2563eb)));
 }
 
 .wt-cms-card__meta {
