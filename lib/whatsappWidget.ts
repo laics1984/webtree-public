@@ -183,3 +183,19 @@ export function withPageContext(
     return href
   }
 }
+
+/**
+ * The number a WhatsApp link opens (digits only), for matching the chat that
+ * follows to the tap — wa.me/<n>, api.whatsapp.com/send?phone=<n> or
+ * whatsapp://send?phone=<n>. Nothing is added to the message itself.
+ */
+export function chatNumber(href: string): string | undefined {
+  try {
+    const url = new URL(href)
+    const raw = /wa\.me$/i.test(url.hostname) ? url.pathname.slice(1) : url.searchParams.get('phone') || ''
+    const digits = raw.replace(/\D+/g, '')
+    return digits.length >= 6 && digits.length <= 15 ? digits : undefined
+  } catch {
+    return undefined
+  }
+}

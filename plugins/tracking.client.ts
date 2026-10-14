@@ -3,6 +3,7 @@ import { toGtagEvent, toGtagPageviewEvent } from '~/lib/googleAnalytics'
 import { normalizeHost } from '~/lib/host'
 import { isInternalVisit } from '~/lib/internalVisit'
 import { detailProduct, recentProduct, type ProductBinding, type ProductInterest } from '~/lib/productTracking'
+import { chatNumber } from '~/lib/whatsappWidget'
 
 // First-party tracking snippet — implements webtree-cms-api/docs/tracking-contract.md.
 // Events batch in memory and post to the same-origin Nitro proxy (/api/public/events),
@@ -339,15 +340,20 @@ export default defineNuxtPlugin((nuxtApp) => {
         return
       }
 
-      const ctaId = target.closest('[data-wt-cta]')?.getAttribute('data-wt-cta')?.trim()
+      const cta = target.closest('[data-wt-cta]')
+      const ctaId = cta?.getAttribute('data-wt-cta')?.trim()
       if (ctaId) {
-        enqueue({ t: 'cta_click', p: currentPath, m: { ctaId: clampMeta(ctaId) }, ts: Date.now() })
+        // A button inside a product card (or on its page) is interest in that product.
+        const productId = productAt(cta)
+        enqueue({ t: 'cta_click', p: currentPath, m: { ctaId: clampMeta(ctaId), ...(productId ? { productId } : {}) }, ts: Date.now() })
       }
 
       const href = target.closest('a[href]')?.getAttribute('href') || ''
       if (WHATSAPP_HREF_PATTERN.test(href)) {
         const context = productContext(target)
-        const meta = context.product_id ? { productId: context.product_id } : undefined
+        // The number tapped lets the CMS match the chat that follows to this visit.
+        const to = chatNumber(href)
+        const meta = context.product_id || to ? { ...(context.product_id ? { productId: context.product_id } : {}), ...(to ? { to } : {}) } : undefined
         rememberProduct(context.product_id, context.product_path)
         enqueue({ t: 'whatsapp_click', p: currentPath, m: meta, ts: Date.now() }, true)
       }

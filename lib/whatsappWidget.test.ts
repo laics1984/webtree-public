@@ -5,6 +5,7 @@ import {
   isWithinBusinessHours,
   localizeNow,
   matchesPageRule,
+  chatNumber,
   withPageContext,
 } from '~/lib/whatsappWidget'
 import type { WhatsAppWidget } from '~/types/public'
@@ -160,5 +161,15 @@ describe('withPageContext', () => {
     const result = new URL(withPageContext('https://wa.me/60123456789', true, 'https://acme.test/'))
 
     expect(result.searchParams.get('text')).toBe('https://acme.test/')
+  })
+})
+
+describe('chatNumber', () => {
+  it('reads the number a WhatsApp link opens', () => {
+    expect(chatNumber('https://wa.me/60123456789?text=Hi')).toBe('60123456789')
+    expect(chatNumber('https://api.whatsapp.com/send?phone=%2B60123456789&text=Hi')).toBe('60123456789')
+    expect(chatNumber('whatsapp://send?phone=60123456789')).toBe('60123456789')
+    expect(chatNumber('https://wa.me/')).toBeUndefined()
+    expect(chatNumber('not a url')).toBeUndefined()
   })
 })
