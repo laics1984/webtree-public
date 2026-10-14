@@ -33,6 +33,10 @@ describe('buildGtagScripts', () => {
 })
 
 describe('toGtagEvent', () => {
+  it('keeps first-party matching meta out of the owner\'s GA', () => {
+    expect(toGtagEvent('whatsapp_click', { productId: 'p1', to: '60123456789' })).toEqual(['event', 'whatsapp_click', { product_id: 'p1' }])
+  })
+
   it('maps a form submission to the recommended generate_lead event', () => {
     expect(toGtagEvent('form_submit', { formId: 'contact-1' })).toEqual([
       'event',

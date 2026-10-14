@@ -383,7 +383,6 @@ async function onSubmit() {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  opacity: 0.7;
   color: var(--builder-color-text, #111827);
 }
 
@@ -395,6 +394,14 @@ async function onSubmit() {
   }
 }
 
+/* The label recedes; its Required chip does not. Opacity on the whole label
+   faded the chip's ink and fill back toward the band with it (2.2:1), so it
+   sits on the two parts meant to recede. */
+.wt-contact-form__icon,
+.wt-contact-form__label-text {
+  opacity: 0.7;
+}
+
 .wt-contact-form__icon {
   width: 0.875rem;
   height: 0.875rem;
@@ -402,13 +409,16 @@ async function onSubmit() {
   color: var(--builder-color-primary, #2563eb);
 }
 
+/* A chip that paints its own surface states its own ink (lib/styles.ts): an
+   opaque brand tint, so the colour behind the label is known on any band,
+   and the brand ink held to AA on that tint. */
 .wt-contact-form__required {
   border-radius: 999px;
   padding: 0.125rem 0.5rem;
   font-size: 10px;
   letter-spacing: 0.12em;
-  color: var(--builder-color-primary, #2563eb);
-  background: color-mix(in srgb, var(--builder-color-primary, #2563eb) 10%, transparent);
+  color: var(--builder-color-primary-tint-ink, var(--builder-color-primary-ink, #2563eb));
+  background: var(--builder-color-primary-tint, var(--builder-color-background, #ffffff));
 }
 
 .wt-contact-form__control {

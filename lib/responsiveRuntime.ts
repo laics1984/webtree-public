@@ -17,7 +17,8 @@ type ResponsiveNodeContext = {
   // True inside the brand mark's own subtree. The typographic logo is a
   // container named "Brand" holding a `link` wordmark, so without this the
   // header-link rule below would hide the brand name itself on every site
-  // whose logo did not render as an image.
+  // whose logo did not render as an image — and the fluid-box rules would
+  // reflow the lockup (see `isBrandMark`).
   inBrandMark?: boolean
 }
 
@@ -79,7 +80,9 @@ function getCompactLogoStyles(
 // "Header brand row", which holds the CTA as well as the mark — a loose match
 // there shields the very node this is meant to find. The image logo needs no
 // entry: an image is never a link.
-function isBrandMarkRoot(node: PublicBlockNode): boolean {
+function isBrandMarkRoot(
+  node: PublicBlockNode | Record<string, unknown> | null | undefined
+): boolean {
   return /^brand$/i.test(getNodeName(node).trim())
 }
 
@@ -366,6 +369,14 @@ export function getResponsiveNodeStyles(
   const hasFixedPixelWidth = widthPx !== null
   const isImageElement = type === 'image'
   const isBrandLogoElement = isImageElement && /brand/i.test(getNodeName(node))
+  // The brand mark is a LOCKUP, sized as one unit by whoever authored it: the
+  // image logo, or the typographic mark — a "Brand" container holding a fixed
+  // 48px monogram circle beside its wordmark. The fluid-box rules below are for
+  // layout boxes that would overflow a narrow screen. Inside the mark they broke
+  // it twice over: the circle's `width: 48px` became `width: 100%` (a pill), and
+  // the flex-wrap rule then dropped the wordmark onto a row of its own under it.
+  const isBrandMark =
+    isBrandLogoElement || isBrandMarkRoot(node) || context.inBrandMark === true
   const parentType = normalizeBlockType(context.parentType || '')
   const siblingTypes = context.siblingTypes || []
   const scope = context.scope
@@ -398,6 +409,9 @@ export function getResponsiveNodeStyles(
       slot === 'footer' ||
       slot === 'social'
     )
+  // Social menus render as a row of brand glyphs (MenuBlock), so they keep the
+  // horizontal run on mobile that the other footer menus give up.
+  const isSocialMenu = type === 'menu' && (slot === 'social' || variant === 'social-inline')
   const isHeaderLink =
     type === 'link' &&
     inHeader &&
@@ -411,7 +425,7 @@ export function getResponsiveNodeStyles(
     typeof imageContent?.src === 'string' &&
     imageContent.src.trim().length > 0
 
-  if (isImageElement && !isBrandLogoElement && !isHeaderImage && !hasDeviceOverride('width')) {
+  if (isImageElement && !isBrandMark && !isHeaderImage && !hasDeviceOverride('width')) {
     mergedStyles.width = '100%'
     if (!hasDeviceOverride('maxWidth')) mergedStyles.maxWidth = '100%'
     if (!hasDeviceOverride('left')) mergedStyles.left = '0'
@@ -419,12 +433,12 @@ export function getResponsiveNodeStyles(
     if (!hasDeviceOverride('right')) mergedStyles.right = 'auto'
   }
 
-  if (hasImageSource && !isBrandLogoElement && !isHeaderImage && !hasDeviceOverride('height')) {
+  if (hasImageSource && !isBrandMark && !isHeaderImage && !hasDeviceOverride('height')) {
     mergedStyles.height = 'auto'
     if (!hasDeviceOverride('minHeight')) mergedStyles.minHeight = '0px'
   }
 
-  if (hasFixedPixelWidth && !isRootSection && !isBrandLogoElement && !isHeaderImage) {
+  if (hasFixedPixelWidth && !isRootSection && !isBrandMark && !isHeaderImage) {
     mergedStyles.width = '100%'
     mergedStyles.maxWidth = '100%'
     mergedStyles.left = '0'
@@ -519,6 +533,7 @@ export function getResponsiveNodeStyles(
     (device === 'Mobile' || device === 'Tablet') &&
     mergedStyles.display === 'flex' &&
     (scope === 'header' || scope === 'footer') &&
+    !isBrandMark &&
     !hasDeviceOverride('flexWrap')
   ) {
     mergedStyles.flexWrap = 'wrap'
@@ -634,7 +649,7 @@ export function getResponsiveNodeStyles(
     if (!hasDeviceOverride('display')) mergedStyles.display = 'none'
   }
 
-  if (device === 'Mobile' && isFooterMenu) {
+  if (device === 'Mobile' && isFooterMenu && !isSocialMenu) {
     if (!hasDeviceOverride('width')) mergedStyles.width = '100%'
     if (!hasDeviceOverride('flexDirection')) mergedStyles.flexDirection = 'column'
     if (!hasDeviceOverride('alignItems')) mergedStyles.alignItems = 'flex-start'
@@ -645,7 +660,7 @@ export function getResponsiveNodeStyles(
     device === 'Mobile' &&
     isImageElement &&
     parentType === 'header' &&
-    !isBrandLogoElement &&
+    !isBrandMark &&
     !hasDeviceOverride('maxWidth')
   ) {
     mergedStyles.maxWidth = '100%'

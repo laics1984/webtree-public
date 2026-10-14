@@ -63,6 +63,9 @@ export function toGtagPageviewEvent(path: string): GtagCommand {
 }
 
 /** The gtag command for a first-party event, or null when GA should not get it. */
+/** Meta used only to match a tap to the chat that follows; it has no meaning in the owner's GA. */
+const FIRST_PARTY_ONLY = new Set(['to'])
+
 export function toGtagEvent(type: string, meta?: Record<string, string>): GtagCommand | null {
   const name = FORWARDED_EVENTS[type]
   if (!name) {
@@ -71,7 +74,7 @@ export function toGtagEvent(type: string, meta?: Record<string, string>): GtagCo
 
   const params: Record<string, string> = {}
   for (const [key, value] of Object.entries(meta ?? {})) {
-    params[toSnakeCase(key)] = value
+    if (!FIRST_PARTY_ONLY.has(key)) params[toSnakeCase(key)] = value
   }
 
   return ['event', name, params]
