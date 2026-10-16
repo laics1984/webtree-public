@@ -1,6 +1,7 @@
 import type { PublicEntityPayload, PublicRoutesResponse, PublicSiteResponse } from '~/types/public'
 import { isLocalPlatformRequestHost, normalizeHost, preferRequestHost } from '~/lib/host'
 import { AI_CRAWLER_DISALLOW_POLICY, isIndexableHost } from '~/lib/indexing'
+import { sitemapAlternates } from '~/lib/languages'
 
 const DEFAULT_ROBOTS_TXT = 'User-agent: *\nAllow: /\n'
 const VALID_CHANGE_FREQUENCIES = new Set([
@@ -177,12 +178,22 @@ export function buildSitemapXml(
         fragments.push(`<priority>${escapeXml(priority)}</priority>`)
       }
 
+      // Every language of the page, self and x-default included, on each of
+      // its URLs — the sitemap form of hreflang (lib/languages.ts).
+      for (const alt of sitemapAlternates(route.alternates, (altPath) =>
+        buildAbsolutePublicUrl(data, requestHost, normalizePublicPath(altPath) || altPath, siteProtocol, platformBaseDomain)
+      )) {
+        fragments.push(`<xhtml:link rel="alternate" hreflang="${escapeXml(alt.hreflang)}" href="${escapeXml(alt.href)}"/>`)
+      }
+
       return [`  <url>${fragments.join('')}</url>`]
     })
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    items.some((item) => item.includes('<xhtml:link'))
+      ? '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">'
+      : '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     ...items,
     '</urlset>'
   ].join('\n')

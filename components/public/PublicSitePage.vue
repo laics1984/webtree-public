@@ -11,6 +11,8 @@ usePublicSeo(payload)
     :entity="payload?.entity"
     :site="payload?.site"
     :body-schema="payload?.page?.bodySchema"
+    :locale="payload?.page?.locale"
+    :alternates="payload?.page?.alternates"
   >
     <template #default="{ headerOverlaySpacerPaddingTop, globalHeroMinHeight }">
       <SchemaRenderer

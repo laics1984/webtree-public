@@ -22,6 +22,10 @@ type RuntimeMenuItem = {
   rel?: string | null
   visible?: boolean
   children?: RuntimeMenuItem[] | null
+  // Set on a resolved language menu item (lib/languages.resolveLanguageMenus).
+  hreflang?: string | null
+  lang?: string | null
+  current?: boolean
 }
 
 type FlatMenuItem = {
@@ -31,6 +35,10 @@ type FlatMenuItem = {
   target?: string | null
   rel?: string | null
   depth: number
+  // Set on a resolved language menu item (lib/languages.resolveLanguageMenus).
+  hreflang?: string | null
+  lang?: string | null
+  current?: boolean
 }
 
 type HeaderActionLink = {
@@ -343,6 +351,9 @@ function flattenMenuItems(items: RuntimeMenuItem[], depth = 0): FlatMenuItem[] {
       target: item.target,
       rel: item.rel,
       depth,
+      hreflang: item.hreflang,
+      lang: item.lang,
+      current: item.current,
     })
 
     if (Array.isArray(item.children) && item.children.length) {
@@ -459,6 +470,9 @@ const socialIconStyles = computed(() => {
             <NuxtLink
               class="wt-menu-link wt-ui-link"
               :to="item.href || '#'"
+              :hreflang="item.hreflang || undefined"
+              :lang="item.lang || undefined"
+              :aria-current="item.current ? 'true' : undefined"
               :target="item.target || undefined"
               :rel="item.rel || undefined"
               :external="isExternalHref(item.href)"
@@ -501,6 +515,9 @@ const socialIconStyles = computed(() => {
           v-else
           class="wt-menu-link wt-ui-link"
           :to="item.href || '#'"
+          :hreflang="item.hreflang || undefined"
+          :lang="item.lang || undefined"
+          :aria-current="item.current ? 'true' : undefined"
           :target="item.target || undefined"
           :rel="item.rel || undefined"
           :external="isExternalHref(item.href)"
@@ -558,6 +575,9 @@ const socialIconStyles = computed(() => {
                 class="wt-mobile-menu-link wt-ui-link wt-ui-divider-link"
                 :style="getMobileItemStyle(item.depth)"
                 :to="item.href"
+                :hreflang="item.hreflang || undefined"
+                :lang="item.lang || undefined"
+                :aria-current="item.current ? 'true' : undefined"
                 :target="item.target || undefined"
                 :rel="item.rel || undefined"
                 :external="isExternalHref(item.href)"
@@ -576,6 +596,9 @@ const socialIconStyles = computed(() => {
                   class="wt-mobile-menu-link wt-mobile-menu-link--secondary wt-ui-link wt-ui-divider-link"
                   :style="getMobileItemStyle(item.depth)"
                   :to="item.href"
+                  :hreflang="item.hreflang || undefined"
+                  :lang="item.lang || undefined"
+                  :aria-current="item.current ? 'true' : undefined"
                   :target="item.target || undefined"
                   :rel="item.rel || undefined"
                   :external="isExternalHref(item.href)"
@@ -594,6 +617,9 @@ const socialIconStyles = computed(() => {
                   :key="`social:${item.id || item.href}`"
                   class="wt-mobile-menu-social__icon"
                   :href="item.href || '#'"
+                  :hreflang="item.hreflang || undefined"
+                  :lang="item.lang || undefined"
+                  :aria-current="item.current ? 'true' : undefined"
                   target="_blank"
                   rel="noopener noreferrer"
                   :aria-label="item.label || 'Social link'"
@@ -689,6 +715,9 @@ const socialIconStyles = computed(() => {
       :key="item.href || item.label"
       class="wt-social-icon"
       :href="item.href || '#'"
+      :hreflang="item.hreflang || undefined"
+      :lang="item.lang || undefined"
+      :aria-current="item.current ? 'true' : undefined"
       :target="item.target || '_blank'"
       :rel="item.rel || 'noopener noreferrer'"
       :aria-label="item.label || 'Social link'"
@@ -717,6 +746,9 @@ const socialIconStyles = computed(() => {
       :key="item.href || item.label"
       class="wt-menu-link wt-ui-link"
       :to="item.href || '#'"
+      :hreflang="item.hreflang || undefined"
+      :lang="item.lang || undefined"
+      :aria-current="item.current ? 'true' : undefined"
       :target="item.target || undefined"
       :rel="item.rel || undefined"
       :external="isExternalHref(item.href)"

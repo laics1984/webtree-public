@@ -54,6 +54,12 @@ export interface PublicMenuItem {
   id?: string
   href?: string | null
   label?: string | null
+  /** On a `purpose: "language"` menu: the BCP 47 language this item switches to. */
+  locale?: string | null
+  /** Set by lib/languages.resolveLanguageMenus on a resolved language item. */
+  hreflang?: string | null
+  lang?: string | null
+  current?: boolean
   target?: string | null
   rel?: string | null
   visible?: boolean
@@ -167,6 +173,14 @@ export interface SeoPayload {
   structuredData?: Record<string, JsonValue> | Array<Record<string, JsonValue>> | null
 }
 
+/** The same page in one language (webtree-cms-api specs/multilingual-sites.md). */
+export interface PublicAlternate {
+  locale: string
+  path: string
+  /** Absolute URL; null when the site has no canonical host. */
+  href?: string | null
+}
+
 export interface PagePayload {
   pageId: string
   revisionId?: string
@@ -179,6 +193,10 @@ export interface PagePayload {
   updatedAt?: string
   bodySchema?: PublicSchemaTree | PublicBlockNode[] | null
   seo?: SeoPayload
+  /** BCP 47 language of this page's text. Absent from APIs older than P3. */
+  locale?: string | null
+  /** This page in every language it is published in, itself included; [] for one. */
+  alternates?: PublicAlternate[] | null
 }
 
 export interface PublicSiteResponse {
@@ -206,6 +224,9 @@ export interface PublicRoutesResponse {
     changeFrequency?: string
     priority?: number
     noindex?: boolean
+    locale?: string
+    /** Set on a page published in several languages: the whole set. */
+    alternates?: Array<{ locale: string; path: string }>
   }>
 }
 

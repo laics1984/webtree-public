@@ -2,6 +2,7 @@
 import { defineAsyncComponent } from 'vue'
 import type { PublicBlockNode } from '~/types/public'
 import { getNodeChildren, getNodeKey, normalizeBlockType } from '~/lib/schema'
+import { languageAttrs } from '~/lib/languages'
 
 defineOptions({ name: 'ElementRenderer' })
 
@@ -65,10 +66,15 @@ const registry: Record<string, any> = {
 const component = computed(() => registry[normalizeBlockType(props.node?.type)])
 const fallbackChildren = computed(() => getNodeChildren(props.node))
 const shouldRenderFallback = computed(() => fallbackChildren.value.length > 0)
+// An element whose text is in another language than the page — the second
+// line of a same-page bilingual site — states it, so screen readers switch
+// voice and search engines read the right language. Bound here, once, as a
+// fallthrough attribute: every block's root element receives it.
+const langAttrs = computed(() => languageAttrs((props.node as { lang?: string | null })?.lang))
 </script>
 
 <template>
-  <component v-if="component" :is="component" :node="node" />
+  <component v-if="component" :is="component" :node="node" v-bind="langAttrs" />
   <div v-else-if="shouldRenderFallback" class="wt-unknown-block" data-unsupported-block="true">
     <p v-if="isDev" class="wt-unknown-label">
       Unsupported content block

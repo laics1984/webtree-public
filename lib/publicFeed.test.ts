@@ -127,6 +127,30 @@ describe('buildSitemapXml', () => {
     expect(xml).toContain('/articles/sports-day')
     expect(xml).not.toContain('/privacy')
   })
+
+  it('states every language of a page on each of its URLs, x-default included', () => {
+    const alternates = [{ locale: 'en', path: '/about' }, { locale: 'ms', path: '/bm/about' }]
+    const xml = buildSitemapXml(
+      routesResponse([
+        { path: '/about', contentId: 'p1', contentType: 'page', locale: 'en', alternates },
+        { path: '/bm/about', contentId: 'p1', contentType: 'page', locale: 'ms', alternates },
+      ]),
+      CUSTOM_HOST,
+      'https',
+      PROD_BASE,
+    )
+
+    expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"')
+    expect(xml.match(/<url>/g)).toHaveLength(2)
+    expect(xml.match(/<xhtml:link rel="alternate" hreflang="ms"/g)).toHaveLength(2)
+    expect(xml.match(/hreflang="x-default" href="https:\/\/[^"]+\/about"/g)).toHaveLength(2)
+  })
+
+  it('keeps a one-language sitemap byte-for-byte as it was', () => {
+    const xml = buildSitemapXml(routesResponse([{ path: '/about', contentId: 'p1', contentType: 'page' }]), CUSTOM_HOST, 'https', PROD_BASE)
+    expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    expect(xml).not.toContain('xhtml')
+  })
 })
 
 // Regression guard for the isLocalPlatformRequestHost refactor: canonical host

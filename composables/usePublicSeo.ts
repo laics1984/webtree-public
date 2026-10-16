@@ -2,6 +2,7 @@ import type { Ref } from 'vue'
 import type { JsonValue, PublicPageResponse, SeoPayload } from '~/types/public'
 import { getRequestHost } from '~/lib/host'
 import { NOINDEX_ROBOTS } from '~/lib/indexing'
+import { hreflangLinks, languageAttrs } from '~/lib/languages'
 import { normalizeSiteProtocol, resolvePublicHost } from '~/lib/publicFeed'
 
 function isJsonObject(value: unknown): value is Record<string, JsonValue> {
@@ -118,7 +119,7 @@ export function usePublicSeo(payload: Ref<PublicPageResponse | null | undefined>
     const twitterImage = toAbsoluteUrl(seo?.twitterImage || ogImage, baseUrl)
     const favicon = toAbsoluteUrl(entity?.favicon, baseUrl)
     const structuredData = normalizeStructuredData(seo?.structuredData || site?.defaults?.structuredDataJsonLd)
-    const link: Array<{ rel: string; href: string }> = []
+    const link: Array<{ rel: string; href: string; hreflang?: string }> = []
     const meta: Array<Record<string, string>> = []
 
     if (description) {
@@ -181,11 +182,18 @@ export function usePublicSeo(payload: Ref<PublicPageResponse | null | undefined>
       link.push({ rel: 'icon', href: favicon })
     }
 
+    // The page in every language it is published in, itself included, plus
+    // x-default. Only an indexable host states them: a preview host is
+    // noindex, and alternates pointing at it would be advice to crawl it.
+    if (indexable) {
+      link.push(...hreflangLinks(page?.alternates))
+    }
+
     return {
       title,
-      htmlAttrs: {
-        lang: entity?.defaultLocale || 'en'
-      },
+      // The page's own language (a Malay page is `ms`, whatever the site's
+      // primary is), else the site's, else English as it always was.
+      htmlAttrs: languageAttrs(page?.locale || entity?.defaultLocale || 'en'),
       link,
       meta,
       script: structuredData.map((item, index) => ({
