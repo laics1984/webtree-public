@@ -80,7 +80,7 @@ function getCompactLogoStyles(
 // "Header brand row", which holds the CTA as well as the mark — a loose match
 // there shields the very node this is meant to find. The image logo needs no
 // entry: an image is never a link.
-function isBrandMarkRoot(
+export function isBrandMarkRoot(
   node: PublicBlockNode | Record<string, unknown> | null | undefined
 ): boolean {
   return /^brand$/i.test(getNodeName(node).trim())
@@ -89,7 +89,7 @@ function isBrandMarkRoot(
 // A link to the site root is a brand mark's home link, never a call to action.
 // Belt and braces with the name above: leaving one extra link in the bar is a
 // far better failure than erasing the site's name from every narrow screen.
-function isSiteRootHref(href: string): boolean {
+export function isSiteRootHref(href: string): boolean {
   const trimmed = href.trim()
   return trimmed === '' || trimmed === '/' || trimmed === '#'
 }

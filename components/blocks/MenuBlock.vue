@@ -2,17 +2,21 @@
 import type { CSSProperties } from 'vue'
 import type { PublicBlockNode, PublicSchemaTree } from '~/types/public'
 import {
-  getArrayField,
   getNodeClasses,
-  getNodeField,
   getNodeStyles,
   getStringField,
   runtimeHeaderOverlayKey,
   runtimeHeaderSchemaKey,
   runtimeMenusKey,
 } from '~/lib/blockRuntime'
+import {
+  collectHeaderSheet,
+  resolveMenuForNode,
+  utilitySheetSections,
+  type HeaderSheetAction,
+} from '~/lib/headerSheet'
 import { getNodeDomId } from '~/lib/responsiveRuntime'
-import { getNodeChildren, normalizeBlockType, normalizeSchemaNodes } from '~/lib/schema'
+import { getNodeChildren, normalizeSchemaNodes } from '~/lib/schema'
 
 type RuntimeMenuItem = {
   id?: string
@@ -39,15 +43,6 @@ type FlatMenuItem = {
   hreflang?: string | null
   lang?: string | null
   current?: boolean
-}
-
-type HeaderActionLink = {
-  id: string
-  href: string
-  label: string
-  target?: string | null
-  rel?: string | null
-  styles: CSSProperties
 }
 
 const props = defineProps<{ node: PublicBlockNode }>()
@@ -105,7 +100,7 @@ const isSocialInHeader = computed(() => {
 })
 const isOverlayHeader = computed(() => runtimeHeaderOverlay.value)
 
-const items = computed<RuntimeMenuItem[]>(() => resolveMenuItemsForNode(props.node))
+const items = computed<RuntimeMenuItem[]>(() => resolveMenuForNode(props.node, runtimeMenus.value).items)
 const visibleItems = computed(() => items.value.filter((item) => item?.visible !== false))
 const flattenedVisibleItems = computed(() => flattenMenuItems(visibleItems.value))
 
@@ -118,76 +113,32 @@ const hasFooterColumnGroups = computed(
     visibleItems.value.some((item) => visibleChildren(item).length > 0)
 )
 
+// What the Menu sheet lists besides the primary nav (lib/headerSheet): the
+// header's other menus, sorted into social glyphs and titled utility lists,
+// and its call-to-action links.
 const headerSupplemental = computed(() => {
-  const utilityItems: RuntimeMenuItem[] = []
+  const sheet = collectHeaderSheet(runtimeHeaderSchema.value, runtimeMenus.value, nodeDomId.value)
   const socialItems: RuntimeMenuItem[] = []
-  const actionLinks: HeaderActionLink[] = []
-  const currentNodeId = nodeDomId.value
-
-  collectHeaderElements(normalizeSchemaNodes(runtimeHeaderSchema.value), (node) => {
-    const candidateId = getNodeDomId(node)
-
-    if (candidateId && candidateId === currentNodeId) {
-      return
-    }
-
-    const type = normalizeBlockType(getStringField(node, 'type'))
-    if (type === 'header') {
-      return
-    }
-
-    if (type === 'menu') {
-      const nodeSlot = (getStringField(node, 'slot') || '').trim().toLowerCase()
-      const nodeVariant = (getStringField(node, 'variant') || '').trim().toLowerCase()
-      const nodeItems = resolveMenuItemsForNode(node).filter((item) => item?.visible !== false)
-      const isUtilityMenu =
-        nodeSlot === 'utility' || nodeVariant === 'utility-inline'
-      const isSocialMenu =
-        nodeSlot === 'social' || nodeVariant === 'social-inline' ||
-        (nodeItems.length > 0 && nodeItems.every((item) => {
-          const key = (item.label || '').trim().toLowerCase()
-          return key in SOCIAL_ICON_PATHS
-        }))
-
-      if (isSocialMenu) {
-        socialItems.push(...nodeItems)
-      } else if (isUtilityMenu) {
-        utilityItems.push(...nodeItems)
-      }
-      return
-    }
-
-    if (type !== 'link') {
-      return
-    }
-
-    const href = getStringField(node, 'href') || ''
-    const label = getStringField(node, 'innerText', 'label', 'text') || ''
-
-    if (!href.trim() || !label.trim()) {
-      return
-    }
-
-    actionLinks.push({
-      id: candidateId || label,
-      href,
-      label,
-      rel: getStringField(node, 'rel'),
-      target: getStringField(node, 'target'),
-      styles: getNodeStyles(node),
-    })
+  const otherMenus = sheet.menus.filter((entry) => {
+    const isSocialMenu =
+      entry.slot === 'social' || entry.variant === 'social-inline' ||
+      (entry.items.length > 0 && entry.items.every((item) => {
+        const key = (item.label || '').trim().toLowerCase()
+        return key in SOCIAL_ICON_PATHS
+      }))
+    if (isSocialMenu) socialItems.push(...entry.items)
+    return !isSocialMenu
   })
 
   return {
-    utilityItems,
+    utilitySections: utilitySheetSections(otherMenus).map((section) => ({
+      ...section,
+      items: flattenMenuItems(section.items),
+    })),
     socialItems,
-    actionLinks,
+    actionLinks: sheet.actionLinks,
   }
 })
-
-const flattenedUtilityItems = computed(() =>
-  flattenMenuItems(headerSupplemental.value.utilityItems)
-)
 
 const resolvedStyles = computed(() => {
   if (colorMode.value !== 'auto') {
@@ -299,40 +250,6 @@ onBeforeUnmount(() => {
   clearDropdownTimers()
 })
 
-function resolveMenuItemsForNode(node: PublicBlockNode | Record<string, unknown>): RuntimeMenuItem[] {
-  const directItems = getArrayField<RuntimeMenuItem>(node, 'items')
-  if (directItems.length) {
-    return directItems
-  }
-
-  const explicitMenuId = getStringField(node, 'menuId')
-  const nodeSlot = getStringField(node, 'slot')
-  const label = getStringField(node, 'menuLabel')
-  const menu = runtimeMenus.value.find((entry) => {
-    if (explicitMenuId) {
-      return entry.id === explicitMenuId
-    }
-
-    return (nodeSlot && entry.purpose === nodeSlot) || (label && entry.name === label)
-  })
-
-  return Array.isArray(menu?.items) ? menu.items : []
-}
-
-function collectHeaderElements(
-  nodes: PublicBlockNode[],
-  visitor: (node: PublicBlockNode) => void
-) {
-  for (const node of nodes) {
-    if (getNodeField(node, 'visible') === false) {
-      continue
-    }
-
-    visitor(node)
-    collectHeaderElements(getNodeChildren(node), visitor)
-  }
-}
-
 function flattenMenuItems(items: RuntimeMenuItem[], depth = 0): FlatMenuItem[] {
   const flattened: FlatMenuItem[] = []
 
@@ -370,7 +287,7 @@ function getMobileItemStyle(depth: number): CSSProperties {
   }
 }
 
-function getActionLinkStyle(actionLink: HeaderActionLink): CSSProperties {
+function getActionLinkStyle(actionLink: HeaderSheetAction): CSSProperties {
   return {
     backgroundColor:
       typeof actionLink.styles.backgroundColor === 'string'
@@ -587,11 +504,15 @@ const socialIconStyles = computed(() => {
               </NuxtLink>
             </nav>
 
-            <div v-if="flattenedUtilityItems.length" class="wt-mobile-menu-section">
-              <p class="wt-mobile-menu-section__title">Utility</p>
-              <nav class="wt-mobile-menu-list" aria-label="Utility links">
+            <div
+              v-for="section in headerSupplemental.utilitySections"
+              :key="`utility-section:${section.key}`"
+              class="wt-mobile-menu-section"
+            >
+              <p v-if="section.title" class="wt-mobile-menu-section__title">{{ section.title }}</p>
+              <nav class="wt-mobile-menu-list" :aria-label="section.title ? `${section.title} links` : undefined">
                 <NuxtLink
-                  v-for="item in flattenedUtilityItems"
+                  v-for="item in section.items"
                   :key="`utility:${item.id}:${item.depth}`"
                   class="wt-mobile-menu-link wt-mobile-menu-link--secondary wt-ui-link wt-ui-divider-link"
                   :style="getMobileItemStyle(item.depth)"
