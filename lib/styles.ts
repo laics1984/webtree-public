@@ -1,4 +1,5 @@
 import type { JsonPrimitive, PublicStyleTokens } from '~/types/public'
+import { semanticColorVars, ensureColorContrast, normalizeHex, type ThemeColors } from './colorSystem'
 
 // --- AA contrast safety net for brand-primary text ------------------------
 // Small, self-contained port of builder src/lib/color-utils.ts's
@@ -228,13 +229,22 @@ function extractCssVars(source?: PublicStyleTokens | null): Record<string, strin
   return vars
 }
 
+// Records that ride in BuilderStyles without being style tokens. The design
+// manifest is the generator's decision record: free text (its `seed` is the
+// brand name, its decisions quote the direction brief), read by nothing that
+// styles a page. Flattened, it lands in the root's server-rendered `style`
+// attribute, where one apostrophe ("St. Mary's") opens a CSS string that
+// swallows every declaration after it — the colour and button tokens among
+// them, so buttons fall back to the default blue.
+const NON_TOKEN_KEYS = new Set(['designManifest'])
+
 function flattenStyleTokens(
   source: PublicStyleTokens,
   prefix = '--wt',
   output: Record<string, string> = {}
 ): Record<string, string> {
   for (const [key, value] of Object.entries(source)) {
-    if (key.startsWith('--') || key === 'cssVars' || key === 'variables') {
+    if (key.startsWith('--') || key === 'cssVars' || key === 'variables' || NON_TOKEN_KEYS.has(key)) {
       continue
     }
 
@@ -312,6 +322,14 @@ export function buildCssVars(styles?: PublicStyleTokens | null) {
   const buttonBackground = getNestedStyleValue(styles, ['buttons', 'background']) || primaryColor
   const buttonText = getNestedStyleValue(styles, ['buttons', 'text']) || '#ffffff'
   const buttonRadius = toCssLength(styles?.buttons && isStyleRecord(styles.buttons) ? styles.buttons.radius : null, '14px')
+  const versionedVars = styles?.colorSystemVersion === 2 ? semanticColorVars({
+    primary: primaryColor, secondary: secondaryColor, accent: accentColor,
+    text: textColor, background: backgroundColor, surface: surfaceColor,
+  } as ThemeColors, { background: buttonBackground, text: buttonText }) : {}
+  const customMuted = getNestedStyleValue(styles, ['colors', 'muted']) || directVars['--wt-color-muted']
+  const semanticMuted = customMuted
+    ? (normalizeHex(customMuted) ? ensureColorContrast(normalizeHex(customMuted)!, backgroundColor) : customMuted)
+    : versionedVars['--builder-color-text-muted']
   const pageBackground = getNestedStyleValue(styles, ['page', 'background']) || backgroundColor
   // Sections center their content with
   // `padding: max(80px, calc((100% - var(--builder-page-max-width)) / 2))`.
@@ -363,7 +381,12 @@ export function buildCssVars(styles?: PublicStyleTokens | null) {
     '--builder-button-radius': buttonRadius,
     ...(heroMinHeight ? { '--builder-hero-min-height': heroMinHeight } : {}),
     ...(heroHeadingSize ? { '--builder-hero-heading-size': heroHeadingSize } : {}),
-    ...(heroBodySize ? { '--builder-hero-body-size': heroBodySize } : {})
+    ...(heroBodySize ? { '--builder-hero-body-size': heroBodySize } : {}),
+    ...versionedVars,
+    ...(styles?.colorSystemVersion === 2 ? {
+      '--wt-color-muted': semanticMuted || mutedColor,
+      '--wt-color-surface-ink': ensureColorContrast(versionedVars['--builder-color-ink-dark'] || textColor, '#ffffff'),
+    } : {})
   }
 }
 
