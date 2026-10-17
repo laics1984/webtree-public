@@ -173,6 +173,35 @@ describe('buildCssVars primary tint', () => {
   })
 })
 
+describe('buildCssVars design manifest', () => {
+  // The generator's decision record rides in BuilderStyles. Flattened into the
+  // root's server-rendered `style` attribute, one apostrophe in it opened a CSS
+  // string that swallowed every later declaration: buttons went default blue.
+  const styles = {
+    colors: { primary: '#c2410c', background: '#ffffff' },
+    buttons: { background: '#c2410c', text: '#ffffff' },
+    designManifest: {
+      seed: "St. Mary's",
+      direction: { slug: 'warm-heritage', brief: "the school's own photographs, framed" },
+    },
+  }
+
+  it('never becomes custom properties', () => {
+    const names = Object.keys(buildCssVars(styles))
+    expect(names.filter((name) => name.startsWith('--wt-design-manifest'))).toEqual([])
+    expect(names).toContain('--wt-colors-primary') // the tokens beside it still flatten
+  })
+
+  it('leaves the button tokens and every value safe to serialise', () => {
+    const vars = buildCssVars(styles)
+    expect(vars['--builder-button-background']).toBe('#c2410c')
+    for (const [name, value] of Object.entries(vars)) {
+      expect(value.split("'").length % 2, name).toBe(1)
+      expect(value.split('"').length % 2, name).toBe(1)
+    }
+  })
+})
+
 describe('hasOwnTextColor', () => {
   // The colour every builder element is created with reads as "Default".
   it('is false for the default text-colour token, with or without a fallback', () => {
