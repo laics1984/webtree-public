@@ -6,6 +6,7 @@ import type {
 } from '~/types/public'
 import { fetchPublicContentList, fetchPublicTemplate } from '~/lib/api'
 import { getRequestHost } from '~/lib/host'
+import { isNotFoundError } from '~/lib/httpError'
 
 export interface ContentListingPageOptions {
   taxonomyType?: CmsTaxonomyType | null
@@ -53,16 +54,14 @@ export async function useContentListingPage(
   )
 
   if (error.value) {
-    const statusCode =
-      typeof (error.value as { statusCode?: number }).statusCode === 'number'
-        ? (error.value as { statusCode: number }).statusCode
-        : 502
+    // Same contract as the detail page: an absent listing template is a 404,
+    // anything else is a failure and stays a 502.
+    const notFound = isNotFoundError(error.value)
     throw createError({
-      statusCode: statusCode === 404 ? 404 : 502,
-      statusMessage:
-        statusCode === 404
-          ? 'Listing template not found.'
-          : 'Unable to load this listing right now.',
+      statusCode: notFound ? 404 : 502,
+      statusMessage: notFound
+        ? 'Listing template not found.'
+        : 'Unable to load this listing right now.',
     })
   }
 
