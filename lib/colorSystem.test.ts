@@ -42,8 +42,8 @@ describe('versioned semantic colors', () => {
     expect(colorContrast(vars['--builder-button-text'],vars['--builder-button-background'])).toBeGreaterThanOrEqual(4.5)
     for(const state of ['hover','active']) expect(colorContrast(vars['--builder-button-on-'+state],vars['--builder-button-'+state])).toBeGreaterThanOrEqual(4.5)
   })
-  it('adds no new tokens to unversioned legacy outputs', () => {
-    expect(buildCssVars({colors:fixtures[0].colors})['--builder-color-surface-inverse']).toBeUndefined()
+  it('derives every role whether or not the payload carries a version', () => {
+    expect(buildCssVars({colors:fixtures[0].colors})['--builder-color-surface-inverse']).toBe(fixtures[0].expected['surface-inverse'])
   })
   it('memoizes immutable variants, rather than recalculating for every node', () => {
     const a=deriveThemeColors(fixtures[0].colors)
