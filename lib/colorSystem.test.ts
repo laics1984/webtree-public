@@ -42,6 +42,19 @@ describe('versioned semantic colors', () => {
     expect(colorContrast(vars['--builder-button-text'],vars['--builder-button-background'])).toBeGreaterThanOrEqual(4.5)
     for(const state of ['hover','active']) expect(colorContrast(vars['--builder-button-on-'+state],vars['--builder-button-'+state])).toBeGreaterThanOrEqual(4.5)
   })
+  it('renders a button still on the old automatic pair with the button pair', () => {
+    for (const fixture of fixtures) {
+      const d = fixture.expected
+      const vars = buildCssVars({colorSystemVersion:2, colors:fixture.colors, buttons:{background:d.primary, text:d['on-primary']}})
+      expect(vars['--builder-button-background'], fixture.colors.primary).toBe(d['primary-button'])
+      expect(vars['--builder-button-text'], fixture.colors.primary).toBe(d['on-primary-button'])
+    }
+  })
+  it('leaves a button someone chose as it is', () => {
+    const vars = buildCssVars({colorSystemVersion:2, colors:fixtures[0].colors, buttons:{background:'#774422', text:'#ffffff'}})
+    expect(vars['--builder-button-background']).toBe('#774422')
+    expect(vars['--builder-button-text']).toBe('#ffffff')
+  })
   it('derives every role whether or not the payload carries a version', () => {
     expect(buildCssVars({colors:fixtures[0].colors})['--builder-color-surface-inverse']).toBe(fixtures[0].expected['surface-inverse'])
   })
