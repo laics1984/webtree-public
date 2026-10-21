@@ -86,6 +86,42 @@ export const ensureColorContrast = (fg: string, bg: string, target=4.5): string 
 }
 const readable = (bg: string, dark: string, light: string) =>
   ensureColorContrast(colorContrast(dark,bg)>=colorContrast(light,bg) ? dark : light,bg)
+/** How far a button's fill may deepen (OKLCH lightness) so a light label
+ * reaches AA: Python's BUTTON_MAX_DEEPEN, which states why. */
+export const BUTTON_MAX_DEEPEN = .14
+/** A brand button's [fill, label]. Python parity: color_system.button_pair. */
+export const buttonPair = (color: string, dark: string, light: string): [string, string] => {
+  const fill = ensureColorContrast(color, light)
+  if (colorContrast(light, fill) >= 4.5 && toOklch(color)[0]-toOklch(fill)[0] <= BUTTON_MAX_DEEPEN) return [fill, light]
+  return [color, readable(color, dark, light)]
+}
+/** The multi-tint voice: a pastel of each of the brand's own hues (primary,
+ * accent and their OKLCH neighbours, held apart); a neutral colour is never a
+ * source. Python parity: color_system.band_fills, which states why. */
+const BAND_MIN_SOURCE_CHROMA = .03
+const BAND_HUE_STEP = 40*Math.PI/180
+const BAND_MIN_HUE_GAP = 22*Math.PI/180
+const BAND_LIGHTNESS: [number, number] = [.955, .27]
+const BAND_CHROMA: [number, number] = [.025, .045]
+export const bandFills = (p: ThemeColors, darkPage: boolean): string[] => {
+  const sources = (['primary','accent'] as const).map(name => toOklch(p[name]))
+    .filter(([,c]) => c >= BAND_MIN_SOURCE_CHROMA).map(([,c,h]) => [c,h] as [number, number])
+  if (!sources.length) return (['primary','secondary','accent','surface'] as const)
+    .map(name => mixPerceptual(p.background,p[name],darkPage?.15:.075))
+  const candidates: Array<[number, number]> = [...sources]
+  for (const turn of [1,-1,2,-2,3,-3])
+    sources.forEach(([c,h],index) => candidates.push([c, h+(index===0?1:-1)*turn*BAND_HUE_STEP]))
+  const picked: Array<[number, number]> = []
+  for (const [c,h] of candidates) {
+    const gap = picked.length
+      ? Math.min(...picked.map(([,o]) => Math.abs((((h-o+Math.PI)%(2*Math.PI))+2*Math.PI)%(2*Math.PI)-Math.PI)))
+      : Math.PI
+    if (gap >= BAND_MIN_HUE_GAP) picked.push([c,h])
+    if (picked.length === 4) break
+  }
+  const lightness = darkPage ? BAND_LIGHTNESS[1] : BAND_LIGHTNESS[0]
+  return picked.map(([c,h]) => fromOklch(lightness, Math.min(BAND_CHROMA[1], Math.max(BAND_CHROMA[0], c*.3)), h))
+}
 const cache = new Map<string, Readonly<Record<string,string>>>()
 export function deriveThemeColors(input: ThemeColors): Readonly<Record<string,string>> {
   const values = fields.map(k => normalizeHex(input[k]))
@@ -106,6 +142,7 @@ export function deriveThemeColors(input: ThemeColors): Readonly<Record<string,st
   out.border=mixPerceptual(bg,out.text,.18)
   out['border-strong']=ensureColorContrast(mixPerceptual(bg,out.text,.40),bg,3)
   for (const name of ['background','surface','surface-elevated','surface-muted','surface-alternate','surface-inverse']) out['on-'+name]=readable(out[name],dark,light)
+  ;[out['primary-button'], out['on-primary-button']]=buttonPair(p.primary,dark,light)
   for (const name of ['primary','secondary','accent'] as const) {
     const color=p[name], [l,c,h]=toOklch(color), direction=l<.4?.045:-.045
     out[name+'-hover']=fromOklch(l+direction,c,h); out[name+'-active']=fromOklch(l+direction*1.8,c,h)
@@ -116,9 +153,9 @@ export function deriveThemeColors(input: ThemeColors): Readonly<Record<string,st
     out[name+'-border']=ensureColorContrast(color,bg,3)
     for (const suffix of ['','-hover','-active']) out['on-'+name+suffix]=readable(out[name+suffix],dark,light)
   }
-  ;[p.primary,p.secondary,p.accent,p.surface].forEach((color,i)=>{
-    out['band-'+(i+1)]=mixPerceptual(bg,color,darkPage?.15:.075)
-    out['on-band-'+(i+1)]=readable(out['band-'+(i+1)],dark,light)
+  bandFills(p,darkPage).forEach((band,i)=>{
+    out['band-'+(i+1)]=band
+    out['on-band-'+(i+1)]=readable(band,dark,light)
   })
   for (const surface of ['background','surface','surface-inverse','primary','secondary','accent','band-1','band-2','band-3','band-4']) {
     out['error-ink-on-'+surface]=ensureColorContrast('#dc2626',out[surface])
@@ -132,11 +169,25 @@ export function deriveThemeColors(input: ThemeColors): Readonly<Record<string,st
   cache.set(key,result)
   return result
 }
-export const semanticColorVars = (colors: ThemeColors, buttons?: { background: string; text: string }): Record<string,string> => {
+/** A stored button still wearing the colour system's OLD automatic pair —
+ * the raw primary with the label `on-primary` picked for it — takes the
+ * button pair (`primary-button` / `on-primary-button`), so a site saved before
+ * that rule renders it without being regenerated. Any other pair is someone's
+ * choice and is returned as stored. Python parity:
+ * color_system.upgrade_default_buttons. */
+export const upgradeDefaultButtons = <T extends { background: string; text: string }>(colors: ThemeColors, buttons: T): T => {
+  const derived = deriveThemeColors(colors)
+  const background = normalizeHex(buttons.background), text = normalizeHex(buttons.text)
+  if (!derived['primary-button'] || background !== derived.primary || text !== derived['on-primary']) return buttons
+  return { ...buttons, background: derived['primary-button'], text: derived['on-primary-button'] }
+}
+export const semanticColorVars = (colors: ThemeColors, stored?: { background: string; text: string }): Record<string,string> => {
   const vars = Object.fromEntries(Object.entries(deriveThemeColors(colors)).map(([k,v])=>['--builder-color-'+k,v]))
+  const buttons = stored && upgradeDefaultButtons(colors, stored)
   const background = normalizeHex(buttons?.background)
   if (background) {
     const states = deriveThemeColors({...colors,primary:background})
+    vars['--builder-button-background'] = background
     vars['--builder-button-text'] = ensureColorContrast(normalizeHex(buttons?.text) || states['on-primary'],background)
     for (const state of ['hover','active']) {
       vars['--builder-button-'+state] = states['primary-'+state]

@@ -28,8 +28,10 @@ import {
   normalizeSchemaNodes,
 } from '~/lib/schema'
 import { buildCssVars } from '~/lib/styles'
+import { resolveLanguageMenus } from '~/lib/languages'
 import { buildGtagScripts } from '~/lib/googleAnalytics'
 import type {
+  PublicAlternate,
   PublicBlockNode,
   PublicEntityPayload,
   PublicSchemaTree,
@@ -40,6 +42,9 @@ const props = defineProps<{
   entity?: PublicEntityPayload | null
   site?: SitePayload | null
   bodySchema?: PublicSchemaTree | PublicBlockNode[] | null
+  /** The page's language and its alternates, for `purpose: "language"` menus. */
+  locale?: string | null
+  alternates?: PublicAlternate[] | null
 }>()
 
 // Tracking bindings are published runtime data, shared with the single tracker.
@@ -106,7 +111,11 @@ function pickRootColorStyle(schema: unknown): string | undefined {
 
 const cssVars = computed(() => buildCssVars(props.site?.builderStyles))
 const runtimeBuilderStyles = computed(() => props.site?.builderStyles)
-const runtimeMenus = computed(() => props.site?.menus ?? [])
+// Language menus follow the reader's page (lib/languages.resolveLanguageMenus);
+// every other menu is the site's as published.
+const runtimeMenus = computed(() =>
+  resolveLanguageMenus(props.site?.menus ?? [], props.alternates, props.locale)
+)
 const pageWidthMode = computed(() => {
   const styles = props.site?.builderStyles
   const page = styles && typeof styles === 'object' && !Array.isArray(styles) ? styles.page : null

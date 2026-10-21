@@ -29,6 +29,59 @@
 }
 
 @layer components {
+  /* The colour system's interaction and form rules, scoped to the rendered site. */
+  .wt-site :is(.wt-theme-action, .wt-contact-form__submit):hover {
+    background-color: var(--builder-action-hover) !important;
+    color: var(--builder-action-on-hover) !important;
+  }
+  .wt-site :is(.wt-theme-action, .wt-contact-form__submit):active {
+    background-color: var(--builder-action-active) !important;
+    color: var(--builder-action-on-active) !important;
+  }
+  .wt-site :is(a, button, input, textarea, select):focus-visible {
+    outline: 2px solid var(--builder-local-focus, var(--builder-color-border-strong)) !important;
+    outline-offset: 3px;
+  }
+  .wt-site .wt-contact-form__control {
+    color: var(--builder-color-on-background) !important;
+    background: var(--builder-color-background) !important;
+  }
+  .wt-site .wt-contact-form__control:not([aria-invalid="true"]) {
+    border-color: var(--builder-color-border-strong) !important;
+  }
+  .wt-site .wt-contact-form__control::placeholder {
+    color: var(--builder-color-text-muted) !important;
+    opacity: 1 !important;
+  }
+  .wt-site :is(.wt-contact-form__label-text, .wt-contact-form__help) {
+    color: var(--builder-local-ink, var(--builder-color-text)) !important;
+    opacity: 1 !important;
+  }
+  .wt-site .wt-contact-form__error {
+    color: var(--builder-local-error, #dc2626) !important;
+  }
+  .wt-site .wt-contact-form__submit {
+    --builder-action-hover: var(--builder-button-hover);
+    --builder-action-on-hover: var(--builder-button-on-hover);
+    --builder-action-active: var(--builder-button-active);
+    --builder-action-on-active: var(--builder-button-on-active);
+    border: 1px solid var(--builder-local-focus, var(--builder-color-border-strong)) !important;
+  }
+  .wt-site :is(.wt-contact-form__success-heading, .wt-contact-form__success-body) {
+    color: var(--builder-local-ink, var(--builder-color-text)) !important;
+  }
+  .wt-site :is(.wt-footer-columns__list, .wt-mobile-menu-link--secondary, .wt-mobile-menu-section__title, .wt-contact-form__success-body) {
+    opacity: 1 !important;
+  }
+
+  .wt-site .wt-clamp-toggle {
+    color: var(--builder-local-brand-ink, var(--builder-color-primary-ink)) !important;
+  }
+  .wt-site :is(.wt-ui-pill, .wt-dynamic-categories:not(.wt-dynamic-categories--own-ink) .wt-dynamic-category-pill) {
+    background: var(--builder-color-primary-tint) !important;
+    color: var(--builder-color-primary-tint-ink) !important;
+  }
+
   .wt-ui-card {
     border: 1px solid rgba(148, 163, 184, 0.18);
     border-radius: 1.5rem;
