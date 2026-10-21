@@ -6,6 +6,7 @@ import ContentListing from '~/components/public/ContentListing.vue'
 import { fetchPublicResolve } from '~/lib/api'
 import { getRequestHost } from '~/lib/host'
 import { contentPrefixesKey } from '~/lib/contentPrefixes'
+import { isNotFoundError } from '~/lib/httpError'
 
 // This catch-all is the server-authoritative dispatcher: it asks the API to
 // resolve the path, then renders the matching surface. See
@@ -26,17 +27,18 @@ const { data, error } = await useAsyncData(
   { watch: [path], default: () => null }
 )
 
-// `error.value` is the proxy's JSON error envelope: the upstream "notFound"
-// kind is nested at `error.data.data.kind` (the proxy's own response body,
-// itself shaped like `{ statusCode, data: { kind: 'notFound' } }`).
+// A failed resolve reaches us in more than one shape — the API's own 404 body
+// on SSR, the Nitro proxy's envelope on a client-side navigation — so the
+// not-found decision lives in `isNotFoundError` rather than in one hardcoded
+// path into `error.data`. Getting this wrong serves 5xx for every unknown URL
+// on every tenant site, which tells crawlers to retry and back off instead of
+// dropping the URL.
 if (error.value) {
-  const upstreamKind = (error.value as { data?: { data?: { kind?: string } } }).data?.data?.kind
-
   // `showError` (not `throw createError`) is required here: a thrown error
   // during setup of this dynamically-keyed catch-all, on a client-side
   // navigation, is logged as an unhandled error and leaves the previous
   // page's content on screen instead of rendering error.vue.
-  if (upstreamKind === 'notFound') {
+  if (isNotFoundError(error.value)) {
     showError(createError({ statusCode: 404, statusMessage: 'Page not found' }))
   } else {
     showError(createError({ statusCode: 502, statusMessage: 'Unable to resolve this URL right now.' }))

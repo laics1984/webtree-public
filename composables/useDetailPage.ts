@@ -5,6 +5,7 @@ import type {
 } from '~/types/public'
 import { fetchPublicContentItem, fetchPublicTemplate } from '~/lib/api'
 import { getRequestHost } from '~/lib/host'
+import { isNotFoundError } from '~/lib/httpError'
 
 export interface DetailPagePayload {
   template: PublicTemplateResponse
@@ -31,16 +32,14 @@ export async function useDetailPage(type: PublicContentItemType, slug: string) {
   )
 
   if (error.value) {
-    const statusCode =
-      typeof (error.value as { statusCode?: number }).statusCode === 'number'
-        ? (error.value as { statusCode: number }).statusCode
-        : 502
+    // Shared with the catch-all: a missing item must 404 whichever shape the
+    // failed fetch arrived in, and only a genuine failure may be a 502.
+    const notFound = isNotFoundError(error.value)
     throw createError({
-      statusCode: statusCode === 404 ? 404 : 502,
-      statusMessage:
-        statusCode === 404
-          ? `${type === 'event' ? 'Event' : 'Article'} not found`
-          : 'Unable to load this page right now.',
+      statusCode: notFound ? 404 : 502,
+      statusMessage: notFound
+        ? `${type === 'event' ? 'Event' : 'Article'} not found`
+        : 'Unable to load this page right now.',
     })
   }
 

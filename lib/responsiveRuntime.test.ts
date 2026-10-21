@@ -94,6 +94,33 @@ const deviceRule = (css: string, device: 'Mobile' | 'Tablet', nodeId: string) =>
   return block.split('\n').find((line) => line.includes(`data-wt-node-id="${nodeId}"`)) ?? ''
 }
 
+describe('process number badges', () => {
+  const badge = {
+    id: 'step-coin', name: 'Step Coin', type: 'container',
+    styles: { display: 'inline-flex', width: '56px', height: '56px', borderRadius: '999px' },
+    responsiveStyles: {
+      mobile: { width: '44px', height: '44px' },
+      tablet: { width: '48px', height: '48px' },
+    },
+  }
+
+  for (const [device, size] of [['Mobile', '44px'], ['Tablet', '48px']] as const) {
+    it(`keeps the authored circle on ${device}`, () => {
+      const styles = getResponsiveNodeStyles(badge, device, undefined, { scope: 'body' })
+      expect(styles.width).toBe(size)
+      expect(styles.height).toBe(size)
+      expect(styles.borderRadius).toBe('999px')
+      const css = buildResponsiveStylesheet({ bodySchema: [badge] })
+      expect(deviceRule(css, device, badge.id)).not.toContain('width: 100%')
+    })
+
+    it(`still makes ordinary fixed-width cards fluid on ${device}`, () => {
+      const card = { ...badge, styles: { ...badge.styles, borderRadius: '12px' } }
+      expect(getResponsiveNodeStyles(card, device, undefined, { scope: 'body' }).width).toBe('100%')
+    })
+  }
+})
+
 describe('header chrome below the desktop breakpoint', () => {
   // Mobile and tablet are exactly the range where MenuBlock swaps the nav for
   // the Menu button (`max-width: 1023.98px` = the two device queries this
