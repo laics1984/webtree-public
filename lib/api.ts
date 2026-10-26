@@ -86,6 +86,7 @@ export interface PublicContactPayload {
   page_url?: string
   marketing_opt_in?: boolean
   website?: string // honeypot — must stay empty
+  turnstile_token?: string // Cloudflare Turnstile, when the site key is set
   meta?: Record<string, unknown>
 }
 

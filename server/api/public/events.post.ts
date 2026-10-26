@@ -1,4 +1,5 @@
 import { encodeVisitorGeo } from '~/lib/visitorGeo'
+import { visitorHeaders } from '~/lib/visitorHeaders'
 
 // First-party tracking ingest proxy. The client posts batched events here
 // (same-origin, so navigator.sendBeacon stays preflight-free); we forward them
@@ -11,8 +12,8 @@ import { encodeVisitorGeo } from '~/lib/visitorGeo'
 // User-Agent and X-Forwarded-For instead of passing through what we set here
 // (confirmed: every event landed at the CMS with no User-Agent at all since
 // this went live). Custom header names aren't touched, so the real values
-// travel as X-Wt-* instead; the CMS reads those in preference to the
-// standard headers.
+// travel as X-Wt-* instead (lib/visitorHeaders.ts), with the key that makes
+// the CMS believe them; it reads those in preference to the standard headers.
 //
 // Location travels the same way (X-Wt-Geo): Cloudflare geolocates the
 // visitor's request to this Worker (event.context.cf), which the CMS on its
@@ -24,11 +25,13 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const body = await readRawBody(event)
 
-  const forwardedFor = getRequestHeader(event, 'x-forwarded-for')
-  const remoteAddress = event.node.req.socket?.remoteAddress
-  const clientIp = [forwardedFor, remoteAddress].filter(Boolean).join(', ')
-  const userAgent = getRequestHeader(event, 'user-agent') || ''
-  const geo = encodeVisitorGeo(event.context.cf)
+  const visitor = visitorHeaders({
+    connectingIp: getRequestHeader(event, 'cf-connecting-ip'),
+    remoteAddress: event.node.req.socket?.remoteAddress,
+    userAgent: getRequestHeader(event, 'user-agent'),
+    geo: encodeVisitorGeo(event.context.cf),
+    proxyKey: String(config.rendererProxySecret || ''),
+  })
 
   if (body) {
     try {
@@ -37,9 +40,7 @@ export default defineEventHandler(async (event) => {
         body,
         headers: {
           'Content-Type': 'text/plain',
-          ...(clientIp ? { 'X-Wt-Client-Ip': clientIp } : {}),
-          ...(userAgent ? { 'X-Wt-User-Agent': userAgent } : {}),
-          ...(geo ? { 'X-Wt-Geo': geo } : {})
+          ...visitor
         }
       })
     } catch {

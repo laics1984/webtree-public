@@ -124,6 +124,8 @@ const PAYLOAD_KEY_MAP: Record<string, keyof PublicContactPayload> = {
 const formValues = reactive<Record<string, string>>({})
 const honeypot = ref('')
 const formElement = ref<HTMLFormElement | null>(null)
+const turnstileElement = ref<HTMLElement | null>(null)
+const turnstile = useTurnstile(turnstileElement)
 const status = ref<'idle' | 'submitting' | 'success' | 'error'>('idle')
 const errorMessage = ref('')
 
@@ -149,6 +151,9 @@ async function onSubmit() {
     ;(payload as Record<string, unknown>)[target] = (formValues[field.key] || '').trim()
   }
   payload.website = honeypot.value
+  if (turnstile.enabled) {
+    payload.turnstile_token = turnstile.token.value
+  }
   if (import.meta.client) {
     payload.page_url = window.location.href
     payload.analytics = useNuxtApp().$wtProductContext?.(formElement.value)
@@ -161,6 +166,8 @@ async function onSubmit() {
     // Conversion event — only on a successful submission, per the tracking contract.
     useNuxtApp().$wtTrack?.('form_submit', { formId: baseId.value })
   } catch (error: any) {
+    // A token works once: the next try needs a fresh one.
+    turnstile.reset()
     status.value = 'error'
     errorMessage.value =
       error?.data?.error?.message ||
@@ -315,6 +322,7 @@ async function onSubmit() {
           {{ errorMessage }}
         </p>
 
+        <div v-if="turnstile.enabled" ref="turnstileElement" class="wt-contact-form__challenge" />
         <button type="submit" class="wt-contact-form__submit" :disabled="status === 'submitting'">
           {{ status === 'submitting' ? 'Sending…' : submitLabel }}
         </button>
@@ -475,6 +483,11 @@ async function onSubmit() {
   height: 1px;
   opacity: 0;
   pointer-events: none;
+}
+
+/* Turnstile's widget is 300 × 65; hold its place so the button does not jump when it appears. */
+.wt-contact-form__challenge {
+  min-height: 65px;
 }
 
 .wt-contact-form__error {
