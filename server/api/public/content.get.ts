@@ -4,8 +4,5 @@ export default defineEventHandler(async (event) => {
     type?: string
     slug?: string
   }
-  const config = useRuntimeConfig()
-  return await $fetch(`${config.publicApiBase}/api/public/content`, {
-    params: { host, type, slug },
-  })
+  return await fetchPublicApi(event, 'content', { host, type, slug })
 })

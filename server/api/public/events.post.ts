@@ -1,5 +1,5 @@
 import { encodeVisitorGeo } from '~/lib/visitorGeo'
-import { visitorHeaders } from '~/lib/visitorHeaders'
+import { visitorHeadersFrom } from '~/lib/visitorHeaders'
 
 // First-party tracking ingest proxy. The client posts batched events here
 // (same-origin, so navigator.sendBeacon stays preflight-free); we forward them
@@ -25,13 +25,7 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   const body = await readRawBody(event)
 
-  const visitor = visitorHeaders({
-    connectingIp: getRequestHeader(event, 'cf-connecting-ip'),
-    remoteAddress: event.node.req.socket?.remoteAddress,
-    userAgent: getRequestHeader(event, 'user-agent'),
-    geo: encodeVisitorGeo(event.context.cf),
-    proxyKey: String(config.rendererProxySecret || ''),
-  })
+  const visitor = visitorHeadersFrom(event, String(config.rendererProxySecret || ''), encodeVisitorGeo(event.context.cf))
 
   if (body) {
     try {

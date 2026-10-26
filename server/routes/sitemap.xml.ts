@@ -1,6 +1,6 @@
-import { fetchPublicRoutes } from '~/lib/api'
 import { isIndexableHost } from '~/lib/indexing'
 import { buildSitemapXml, getPublicFeedStatusCode } from '~/lib/publicFeed'
+import type { PublicRoutesResponse } from '~/types/public'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const data = await fetchPublicRoutes(host)
+    const data = await fetchPublicApi<PublicRoutesResponse>(event, 'routes', { host })
     return buildSitemapXml(data, host, config.public.siteProtocol, config.public.platformBaseDomain)
   } catch (error) {
     const statusCode = getPublicFeedStatusCode(error)
