@@ -4,7 +4,12 @@ import { getNodeDomId } from '~/lib/responsiveRuntime'
 
 const props = defineProps<{ node: Record<string, any> }>()
 const html = computed(() => getStringField(props.node, 'html', 'innerText', 'text') || '')
-const htmlTag = computed(() => getStringField(props.node, 'htmlTag') || 'div')
+// The tag comes from the stored page, so only text tags: never script, style, iframe or the like.
+const TEXT_TAGS = new Set(['div', 'p', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'small', 'strong', 'em', 'label', 'figcaption', 'li'])
+const htmlTag = computed(() => {
+  const tag = (getStringField(props.node, 'htmlTag') || 'div').toLowerCase()
+  return TEXT_TAGS.has(tag) ? tag : 'div'
+})
 const nodeClasses = computed(() => getNodeClasses(props.node))
 const nodeStyles = computed(() => getNodeStyles(props.node))
 const nodeDomId = computed(() => getNodeDomId(props.node) || undefined)

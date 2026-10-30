@@ -1,4 +1,5 @@
 import { normalizeHost } from '~/lib/host'
+import { visitorHeadersFrom } from '~/lib/visitorHeaders'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
@@ -15,6 +16,8 @@ export default defineEventHandler(async (event) => {
     return await $fetch(`${config.publicApiBase}/api/public/contact`, {
       method: 'POST',
       body: { ...body, host },
+      // The visitor, not this server: the CMS limits and records submissions per visitor.
+      headers: visitorHeadersFrom(event, String(config.rendererProxySecret || '')),
     })
   } catch (error: any) {
     // Surface the CMS status (e.g. 422 validation, 404 unknown host) to the client.

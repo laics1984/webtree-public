@@ -9,6 +9,19 @@ import type {
   PublicTemplateType,
   PublicTemplateResponse,
 } from '~/types/public'
+import { visitorHeadersFrom } from '~/lib/visitorHeaders'
+
+// During a server render, the visitor it is for (lib/visitorHeaders.ts): the CMS limits public reads per visitor.
+// In the browser these calls go through this site's /api/public proxies, which add the headers there. A call made
+// after the render's first await can have lost the Nuxt context; it goes without them, and the CMS counts it per
+// address instead.
+function renderVisitorHeaders(): Record<string, string> {
+  if (import.meta.client) {
+    return {}
+  }
+  const event = tryUseNuxtApp()?.ssrContext?.event
+  return event ? visitorHeadersFrom(event, String(useRuntimeConfig().rendererProxySecret || '')) : {}
+}
 
 function resolveApiBase(apiBase?: string | null): string {
   if (apiBase) {
@@ -26,28 +39,32 @@ function resolveApiBase(apiBase?: string | null): string {
 export async function fetchPublicPage(host: string, path: string, apiBase?: string | null) {
   const base = resolveApiBase(apiBase)
   return await $fetch<PublicPageResponse>(`${base}/page`, {
-    params: { host, path }
+    params: { host, path },
+    headers: renderVisitorHeaders(),
   })
 }
 
 export async function fetchPublicResolve(host: string, path: string, apiBase?: string | null) {
   const base = resolveApiBase(apiBase)
   return await $fetch<PublicResolveResponse>(`${base}/resolve`, {
-    params: { host, path }
+    params: { host, path },
+    headers: renderVisitorHeaders(),
   })
 }
 
 export async function fetchPublicSite(host: string, apiBase?: string | null) {
   const base = resolveApiBase(apiBase)
   return await $fetch<PublicSiteResponse>(`${base}/site`, {
-    params: { host }
+    params: { host },
+    headers: renderVisitorHeaders(),
   })
 }
 
 export async function fetchPublicRoutes(host: string, apiBase?: string | null) {
   const base = resolveApiBase(apiBase)
   return await $fetch<PublicRoutesResponse>(`${base}/routes`, {
-    params: { host }
+    params: { host },
+    headers: renderVisitorHeaders(),
   })
 }
 
@@ -59,6 +76,7 @@ export async function fetchPublicTemplate(
   const base = resolveApiBase(apiBase)
   return await $fetch<PublicTemplateResponse>(`${base}/template`, {
     params: { host, type },
+    headers: renderVisitorHeaders(),
   })
 }
 
@@ -71,6 +89,7 @@ export async function fetchPublicContentItem(
   const base = resolveApiBase(apiBase)
   return await $fetch<PublicContentItemResponse>(`${base}/content`, {
     params: { host, type, slug },
+    headers: renderVisitorHeaders(),
   })
 }
 
@@ -86,6 +105,7 @@ export interface PublicContactPayload {
   page_url?: string
   marketing_opt_in?: boolean
   website?: string // honeypot — must stay empty
+  turnstile_token?: string // Cloudflare Turnstile, when the site key is set
   meta?: Record<string, unknown>
 }
 
@@ -129,5 +149,6 @@ export async function fetchPublicContentList(
       taxonomyType: params.taxonomyType ?? undefined,
       taxonomySlug: params.taxonomySlug ?? undefined,
     },
+    headers: renderVisitorHeaders(),
   })
 }

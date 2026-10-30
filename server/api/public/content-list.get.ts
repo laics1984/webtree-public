@@ -8,8 +8,5 @@ export default defineEventHandler(async (event) => {
     taxonomyType?: 'category' | 'tag'
     taxonomySlug?: string
   }
-  const config = useRuntimeConfig()
-  return await $fetch(`${config.publicApiBase}/api/public/content-list`, {
-    params: { host, type, count, current, categorySlug, taxonomyType, taxonomySlug },
-  })
+  return await fetchPublicApi(event, 'content-list', { host, type, count, current, categorySlug, taxonomyType, taxonomySlug })
 })

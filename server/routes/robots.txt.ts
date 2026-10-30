@@ -1,5 +1,5 @@
-import { fetchPublicSite } from '~/lib/api'
 import { buildRobotsTxt, getPublicFeedStatusCode } from '~/lib/publicFeed'
+import type { PublicSiteResponse } from '~/types/public'
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig(event)
@@ -12,7 +12,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const response = await fetchPublicSite(host)
+    const response = await fetchPublicApi<PublicSiteResponse>(event, 'site', { host })
     return buildRobotsTxt(response, host, config.public.siteProtocol, config.public.platformBaseDomain)
   } catch (error) {
     const statusCode = getPublicFeedStatusCode(error)

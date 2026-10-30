@@ -3,8 +3,5 @@ export default defineEventHandler(async (event) => {
     host?: string
     path?: string
   }
-  const config = useRuntimeConfig()
-  return await $fetch(`${config.publicApiBase}/api/public/resolve`, {
-    params: { host, path },
-  })
+  return await fetchPublicApi(event, 'resolve', { host, path })
 })

@@ -33,9 +33,13 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     publicApiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://public-api.localhost',
+    // Server only: proves the X-Wt-* visitor headers to the CMS (its RENDERER_PROXY_SECRET). lib/visitorHeaders.ts
+    rendererProxySecret: process.env.NUXT_RENDERER_PROXY_SECRET || '',
     public: {
       apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://public-api.localhost',
       platformBaseDomain: process.env.NUXT_PUBLIC_PLATFORM_BASE_DOMAIN || 'localhost:3000',
+      // Cloudflare Turnstile on contact forms (composables/useTurnstile.ts). Empty = no challenge.
+      turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || '',
       siteProtocol: defaultSiteProtocol
     }
   },
