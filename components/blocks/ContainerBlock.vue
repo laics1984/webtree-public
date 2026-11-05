@@ -15,8 +15,8 @@ import {
   pickBorderRadiusStyles,
   pickPhotoLayerStyles,
   stripPhotoStyles,
-  toRgbaString,
 } from '~/lib/backgroundPhoto'
+import { photoFilterOverlay, withPhotoFilter } from '~/lib/photoFilter'
 import {
   getNodeBackgroundTexture,
   resolveColorToHex,
@@ -286,19 +286,21 @@ const photoLayerClipStyle = computed(
   () => pickBorderRadiusStyles(nodeStyles.value) as CSSProperties
 )
 
+// A shaped photo filter (the generator's copy scrim, lib/photoFilter.ts) is
+// painted INTO the photo's layer stack, under the grain and edge fade; a flat
+// one, and any filter over a video, is the overlay laid over the media.
 const photoLayerStyle = computed(
-  () => pickPhotoLayerStyles(nodeStyles.value, photoSettings.value.photoOpacity) as CSSProperties
+  () =>
+    pickPhotoLayerStyles(
+      { ...nodeStyles.value, ...withPhotoFilter(nodeStyles.value) },
+      photoSettings.value.photoOpacity
+    ) as CSSProperties
 )
 
-const overlayStyle = computed<CSSProperties | null>(() => {
-  if (photoSettings.value.overlayOpacity <= 0) return null
-  return {
-    backgroundColor: toRgbaString(
-      photoSettings.value.overlayColor,
-      photoSettings.value.overlayOpacity
-    ),
-  }
-})
+const overlayStyle = computed<CSSProperties | null>(
+  () =>
+    photoFilterOverlay(nodeStyles.value, { hasPhotoLayer: hasPhotoLayer.value }) as CSSProperties | null
+)
 </script>
 
 <template>

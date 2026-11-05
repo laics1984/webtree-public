@@ -5,6 +5,12 @@ import type { PublicBlockNode } from '~/types/public'
 export const BACKGROUND_PHOTO_OPACITY_STYLE = '--builder-background-photo-opacity'
 export const BACKGROUND_PHOTO_OVERLAY_COLOR_STYLE = '--builder-background-photo-overlay-color'
 export const BACKGROUND_PHOTO_OVERLAY_OPACITY_STYLE = '--builder-background-photo-overlay-opacity'
+// The filter's SHAPE: `flat` tints the whole background, the others are the
+// generator's copy scrim, anchored where the copy sits — see lib/photoFilter.ts.
+// Absent or unknown reads as `flat`, which is how every page before it paints.
+export const BACKGROUND_PHOTO_OVERLAY_SHAPE_STYLE = '--builder-background-photo-overlay-shape'
+export const PHOTO_FILTER_SHAPES = ['flat', 'center', 'left', 'bottom-left', 'bottom'] as const
+export type PhotoFilterShape = (typeof PHOTO_FILTER_SHAPES)[number]
 
 // Background VIDEO tokens — the video counterpart to a background photo. The
 // opacity + overlay tokens above are shared: they tint the video layer exactly
@@ -81,19 +87,35 @@ export const toRgbaString = (value: string, opacity: number) => {
 
 export interface BackgroundPhotoSettings {
   photoOpacity: number
+  /** The hex the filter paints — a palette token's fallback. */
   overlayColor: string
+  /** The colour as written: a palette token, or the hex. */
+  overlayColorCss: string
   overlayOpacity: number
+  overlayShape: PhotoFilterShape
+  /** The flat tint's fill: rgba for a hex (as it always was), a mix for a token. */
+  overlayFill: string
 }
+
+// A palette token as a filter colour — the generator lifts its scrim with the
+// colour it was bound to (`var(--builder-color-photo-scrim, #101820)`).
+const COLOR_TOKEN_RE = /^var\(\s*--builder-color-[a-z0-9-]+\s*(?:,\s*(#[0-9a-f]{3}(?:[0-9a-f]{3})?)\s*)?\)$/i
 
 export const getBackgroundPhotoSettings = (
   styles?: Record<string, unknown> | null
 ): BackgroundPhotoSettings => {
+  const rawColor =
+    typeof styles?.[BACKGROUND_PHOTO_OVERLAY_COLOR_STYLE] === 'string'
+      ? (styles?.[BACKGROUND_PHOTO_OVERLAY_COLOR_STYLE] as string).trim()
+      : ''
+  const token = rawColor.match(COLOR_TOKEN_RE)
   const overlayColor =
-    normalizeHexColor(
-      typeof styles?.[BACKGROUND_PHOTO_OVERLAY_COLOR_STYLE] === 'string'
-        ? (styles?.[BACKGROUND_PHOTO_OVERLAY_COLOR_STYLE] as string)
-        : undefined
-    ) || DEFAULT_BACKGROUND_PHOTO_OVERLAY_COLOR
+    normalizeHexColor(token ? token[1] : rawColor) || DEFAULT_BACKGROUND_PHOTO_OVERLAY_COLOR
+  const overlayOpacity = parsePercentage(
+    styles?.[BACKGROUND_PHOTO_OVERLAY_OPACITY_STYLE],
+    DEFAULT_BACKGROUND_PHOTO_OVERLAY_OPACITY
+  )
+  const rawShape = styles?.[BACKGROUND_PHOTO_OVERLAY_SHAPE_STYLE]
 
   return {
     photoOpacity: parsePercentage(
@@ -101,10 +123,14 @@ export const getBackgroundPhotoSettings = (
       DEFAULT_BACKGROUND_PHOTO_OPACITY
     ),
     overlayColor,
-    overlayOpacity: parsePercentage(
-      styles?.[BACKGROUND_PHOTO_OVERLAY_OPACITY_STYLE],
-      DEFAULT_BACKGROUND_PHOTO_OVERLAY_OPACITY
-    ),
+    overlayColorCss: token ? rawColor : overlayColor,
+    overlayOpacity,
+    overlayShape: (PHOTO_FILTER_SHAPES as readonly unknown[]).includes(rawShape)
+      ? (rawShape as PhotoFilterShape)
+      : 'flat',
+    overlayFill: token
+      ? `color-mix(in srgb, ${rawColor} ${overlayOpacity}%, transparent)`
+      : toRgbaString(overlayColor, overlayOpacity),
   }
 }
 
