@@ -452,6 +452,152 @@
       "shape": "bottom"
     }
   ],
+  "legacy": [
+    {
+      "lifted": {
+        "--builder-background-photo-overlay-color": "#05080f",
+        "--builder-background-photo-overlay-opacity": 20,
+        "--builder-background-photo-overlay-shape": "center",
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover"
+      },
+      "name": "pre-plateau center",
+      "painted": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), radial-gradient(115% 88% at 50% 50%, rgba(5,8,15,0.2) 35%, rgba(5,8,15,0.11) 57%, rgba(5,8,15,0) 79%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover"
+      },
+      "styles": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), radial-gradient(115% 88% at 50% 50%, rgba(5,8,15,0.2), rgba(5,8,15,0.11) 44%, rgba(5,8,15,0) 78%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover"
+      }
+    },
+    {
+      "lifted": {
+        "--builder-background-photo-overlay-color": "#05080f",
+        "--builder-background-photo-overlay-opacity": 20,
+        "--builder-background-photo-overlay-shape": "center",
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to bottom, rgba(255,255,255,0) 72%, rgba(255,255,255,0.55) 90%, rgba(255,255,255,1) 100%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover"
+      },
+      "name": "pre-plateau center with edge fade",
+      "painted": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to bottom, rgba(255,255,255,0) 72%, rgba(255,255,255,0.55) 90%, rgba(255,255,255,1) 100%), radial-gradient(115% 88% at 50% 50%, rgba(5,8,15,0.2) 35%, rgba(5,8,15,0.11) 57%, rgba(5,8,15,0) 79%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover, cover"
+      },
+      "styles": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to bottom, rgba(255,255,255,0) 72%, rgba(255,255,255,0.55) 90%, rgba(255,255,255,1) 100%), radial-gradient(115% 88% at 50% 50%, rgba(5,8,15,0.2), rgba(5,8,15,0.11) 44%, rgba(5,8,15,0) 78%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover, cover"
+      }
+    },
+    {
+      "lifted": {
+        "--builder-background-photo-overlay-color": "#05080f",
+        "--builder-background-photo-overlay-opacity": 40,
+        "--builder-background-photo-overlay-shape": "left",
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover"
+      },
+      "name": "pre-plateau left",
+      "painted": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to right, rgba(5,8,15,0.4) 54%, rgba(5,8,15,0.22) 76%, rgba(5,8,15,0) 98%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover"
+      },
+      "styles": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to right, rgba(5,8,15,0.4), rgba(5,8,15,0.22) 44%, rgba(5,8,15,0) 78%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover"
+      }
+    },
+    {
+      "lifted": {
+        "--builder-background-photo-overlay-color": "#05080f",
+        "--builder-background-photo-overlay-opacity": 40,
+        "--builder-background-photo-overlay-shape": "left",
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to bottom, rgba(255,255,255,0) 72%, rgba(255,255,255,0.55) 90%, rgba(255,255,255,1) 100%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover"
+      },
+      "name": "pre-plateau left with edge fade",
+      "painted": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to bottom, rgba(255,255,255,0) 72%, rgba(255,255,255,0.55) 90%, rgba(255,255,255,1) 100%), linear-gradient(to right, rgba(5,8,15,0.4) 54%, rgba(5,8,15,0.22) 76%, rgba(5,8,15,0) 98%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover, cover"
+      },
+      "styles": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to bottom, rgba(255,255,255,0) 72%, rgba(255,255,255,0.55) 90%, rgba(255,255,255,1) 100%), linear-gradient(to right, rgba(5,8,15,0.4), rgba(5,8,15,0.22) 44%, rgba(5,8,15,0) 78%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover, cover"
+      }
+    },
+    {
+      "lifted": {
+        "--builder-background-photo-overlay-color": "#05080f",
+        "--builder-background-photo-overlay-opacity": 40,
+        "--builder-background-photo-overlay-shape": "bottom-left",
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover"
+      },
+      "name": "pre-plateau bottom-left",
+      "painted": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to top, rgba(5,8,15,0.23) 50%, rgba(5,8,15,0.13) 72%, rgba(5,8,15,0) 94%), linear-gradient(to right, rgba(5,8,15,0.23) 54%, rgba(5,8,15,0.13) 76%, rgba(5,8,15,0) 98%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover, cover"
+      },
+      "styles": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to top, rgba(5,8,15,0.23), rgba(5,8,15,0.13) 46%, rgba(5,8,15,0) 82%), linear-gradient(to right, rgba(5,8,15,0.23), rgba(5,8,15,0.13) 46%, rgba(5,8,15,0) 82%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover, cover"
+      }
+    },
+    {
+      "lifted": {
+        "--builder-background-photo-overlay-color": "#05080f",
+        "--builder-background-photo-overlay-opacity": 40,
+        "--builder-background-photo-overlay-shape": "bottom-left",
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to bottom, rgba(255,255,255,0) 72%, rgba(255,255,255,0.55) 90%, rgba(255,255,255,1) 100%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover"
+      },
+      "name": "pre-plateau bottom-left with edge fade",
+      "painted": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to bottom, rgba(255,255,255,0) 72%, rgba(255,255,255,0.55) 90%, rgba(255,255,255,1) 100%), linear-gradient(to top, rgba(5,8,15,0.23) 50%, rgba(5,8,15,0.13) 72%, rgba(5,8,15,0) 94%), linear-gradient(to right, rgba(5,8,15,0.23) 54%, rgba(5,8,15,0.13) 76%, rgba(5,8,15,0) 98%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover, cover, cover"
+      },
+      "styles": {
+        "backgroundImage": "url(\"data:image/svg+xml;base64,PHN2Zz4=\"), linear-gradient(to bottom, rgba(255,255,255,0) 72%, rgba(255,255,255,0.55) 90%, rgba(255,255,255,1) 100%), linear-gradient(to top, rgba(5,8,15,0.23), rgba(5,8,15,0.13) 46%, rgba(5,8,15,0) 82%), linear-gradient(to right, rgba(5,8,15,0.23), rgba(5,8,15,0.13) 46%, rgba(5,8,15,0) 82%), radial-gradient(125% 105% at 50% 42%, rgba(5,8,15,0) 45%, rgba(5,8,15,0.08) 100%), linear-gradient(135deg, rgba(5,8,15,0.16), rgba(59,30,115,0.13)), url('https://cdn.example.com/hero.jpg')",
+        "backgroundPosition": "0 0, center, center, center, center, center, center",
+        "backgroundRepeat": "repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat",
+        "backgroundSize": "140px 140px, cover, cover, cover, cover, cover, cover"
+      }
+    }
+  ],
   "lift": [
     {
       "lifted": {
