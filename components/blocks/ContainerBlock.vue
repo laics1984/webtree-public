@@ -23,6 +23,7 @@ import {
   resolvePageBackgroundHex,
   resolvePaletteHex,
   resolveSectionBackgroundImage,
+  resolveSolidFillHex,
   resolveThemeTexture,
 } from '~/lib/backgroundTexture'
 import { getNodeField, runtimeBuilderStylesKey, runtimeHeaderOverlayKey, runtimeHeaderShrinkKey } from '~/lib/blockRuntime'
@@ -142,7 +143,7 @@ const resolvedTextureImage = computed(() => {
       backgroundTexture: getNodeBackgroundTexture(props.node),
       backgroundColorHex:
         typeof bgColorValue === 'string'
-          ? resolveColorToHex(bgColorValue, palette, pageBackgroundHex)
+          ? resolveSolidFillHex(bgColorValue, palette, pageBackgroundHex)
           : null,
     },
     {

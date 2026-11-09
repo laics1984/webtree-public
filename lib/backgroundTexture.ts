@@ -298,8 +298,9 @@ export const sampleMeshEdgeStops = (
 
 export type SectionTextureInput = {
   backgroundTexture?: BackgroundStrategy | null
-  /** The section's current `backgroundColor`, resolved to a literal hex
-   * (caller resolves any `var(--builder-color-*)` / page-bg token first). */
+  /** The section's current `backgroundColor` as resolveSolidFillHex reads it:
+   * a literal hex, or null when the fill is not one opaque colour — which is
+   * never plain. */
   backgroundColorHex?: string | null
 }
 
@@ -388,23 +389,55 @@ export const resolveThemeTexture = (builderStyles: PublicStyleTokens | null | un
 const PAGE_BG_TOKEN_RE = /--builder-page-background\s*,\s*([^)]+)\)/i
 const BUILDER_COLOR_TOKEN_RE = /var\(\s*--builder-color-([a-z]+)\s*\)/i
 
-/** Resolve a stored color (a `var(--builder-color-*)` token, the page
- * background token, or a literal CSS color) to a concrete hex. Mirrors
- * builder's resolveDividerColorToHex (lib/section-divider.ts) exactly, so a
- * token resolves identically in the editor preview and the published site. */
-export const resolveColorToHex = (value: string | null | undefined, palette: ColorPaletteHex, pageBackgroundHex: string): string => {
-  if (!value) return '#ffffff'
+// A token or literal read to a hex, or null when this module cannot name the
+// colour. The two exports below differ only in what they do with that null.
+const readColorHex = (value: string | null | undefined, palette: ColorPaletteHex, pageBackgroundHex: string): string | null => {
+  if (!value) return null
   const tokenMatch = value.match(BUILDER_COLOR_TOKEN_RE)
   if (tokenMatch) {
     const key = tokenMatch[1] as keyof ColorPaletteHex
-    if (key in palette) return toHexColor(palette[key]) || '#ffffff'
+    if (key in palette) return toHexColor(palette[key])
   }
   if (/--builder-page-background/i.test(value)) {
     const fallback = value.match(PAGE_BG_TOKEN_RE)?.[1]?.trim()
-    return toHexColor(pageBackgroundHex) || toHexColor(fallback || '') || '#ffffff'
+    return toHexColor(pageBackgroundHex) || toHexColor(fallback || '')
   }
-  return toHexColor(value) || '#ffffff'
+  return toHexColor(value)
 }
+
+/** Resolve a stored color (a `var(--builder-color-*)` token, the page
+ * background token, or a literal CSS color) to a concrete hex, white when it
+ * names no colour. Mirrors builder's resolveDividerColorToHex
+ * (lib/section-divider.ts) exactly, so a token resolves identically in the
+ * editor preview and the published site. */
+export const resolveColorToHex = (value: string | null | undefined, palette: ColorPaletteHex, pageBackgroundHex: string): string =>
+  readColorHex(value, palette, pageBackgroundHex) || '#ffffff'
+
+// The alpha of an `rgba(r, g, b, a)` / `rgb(r, g, b, a)`; toHexColor reads the
+// channels and drops it.
+const RGB_ALPHA_RE = /^rgba?\([^,()]*,[^,()]*,[^,()]*,\s*(\d*\.?\d+)(%?)\s*\)$/i
+
+// A composed fill — an alpha below 1, or a color-mix() — paints a colour that
+// depends on what lies under it, even when it names a palette token:
+// `color-mix(in srgb, var(--builder-color-background) 80%, transparent)` is the
+// builder's glass, and the token inside it is not what it paints.
+const isComposite = (value: string): boolean => {
+  const trimmed = value.trim()
+  if (/^color-mix\(/i.test(trimmed)) return true
+  const alpha = trimmed.match(RGB_ALPHA_RE)
+  return alpha !== null && Number(alpha[1]) / (alpha[2] ? 100 : 1) < 1
+}
+
+/** The one opaque colour a fill paints, as a hex — or null when it paints none
+ * this module can name: `transparent`, a translucent `rgba()`, a `color-mix()`,
+ * anything unparseable. Texture eligibility reads a fill through this, never
+ * through resolveColorToHex: a see-through card is not a page-coloured band,
+ * and reading it as white tiled the theme's grain across its whole box — a
+ * grey card behind the copy that the design never drew. The
+ * generator's `is_plain` likewise only ever matches a token or a hex. Mirrors
+ * builder's resolveSolidFillHex (lib/section-divider.ts). */
+export const resolveSolidFillHex = (value: string | null | undefined, palette: ColorPaletteHex, pageBackgroundHex: string): string | null =>
+  value && isComposite(value) ? null : readColorHex(value, palette, pageBackgroundHex)
 
 /** Read a node's `backgroundTexture` override field (BuilderElement.backgroundTexture on the wire). */
 export const getNodeBackgroundTexture = (
